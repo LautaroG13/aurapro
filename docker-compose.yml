@@ -1,0 +1,154 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: aurapro-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
+    networks:
+      - aurapro-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: aurapro-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - aurapro-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: aurapro-kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - aurapro-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: aurapro-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aurapro
+      POSTGRES_PASSWORD: aurapro
+      POSTGRES_DB: aurapro
+    ports:
+      # Puerto host remapeado a 55432: el 5432 estándar suele estar
+      # ocupado por instalaciones nativas de Postgres (ej. Postgres.app
+      # en Mac). Dentro de la red de Docker el puerto sigue siendo 5432
+      # (ver DATABASE_URL en docker-compose.yml -> hostname `postgres`);
+      # esto solo cambia cómo se accede desde el host.
+      - "55432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Se monta el directorio completo, no el archivo suelto: un bind
+      # mount de un solo archivo sobre VirtioFS (Docker Desktop en Mac)
+      # puede fallar con "Resource deadlock would occur" (EDEADLK) al
+      # leerlo. Montando el directorio, docker-entrypoint-initdb.d corre
+      # cualquier *.sql/*.sh que haya ahí, en orden alfabético.
+      - ./infra/docker/postgres:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aurapro"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aurapro-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: aurapro-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aurapro-network
+
+  backend:
+    build:
+      context: ./backend
+    container_name: aurapro-backend
+    restart: unless-stopped
+    # Sin `environment:` para Postgres/Redis/Kafka: los defaults de
+    # app/core/config.py ya son los hostnames de este mismo docker-compose
+    # (postgres, redis, kafka) -- ver el docstring de Settings. El .env de
+    # la raíz no se copia a la imagen ni aplica acá (env_file="../.env" no
+    # resuelve a nada dentro del contenedor), así que corriendo por Docker
+    # siempre se usan estos defaults, no el `.env` de desarrollo local.
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - aurapro-network
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # URL con la que el NAVEGADOR (no otro contenedor) llega al
+        # backend -- el puerto publicado al host, no el hostname interno
+        # de Docker. Se hornea en el bundle en build time (ver Dockerfile).
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    container_name: aurapro-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - aurapro-network
+
+networks:
+  aurapro-network:
+    driver: bridge
+
+volumes:
+  zookeeper_data:
+  zookeeper_log:
+  kafka_data:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,36 @@
+# Env
+.env
+.env.local
+
+# Python (backend)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node (frontend)
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Rust (workers)
+target/
+Cargo.lock.bak
+
+# Docker volumes / data
+infra/docker/**/data/
+
+# IDE / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Logs
+*.log

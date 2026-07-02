@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aurapro.dev/schemas/purchase_order_event.json",
+  "title": "OrdenCompraGenerada",
+  "description": "Evento emitido cuando se genera automáticamente una orden de compra (estado DRAFT) al detectar riesgo de quiebre de stock. Contrato compartido, mismo patrón que sales_event.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "timestamp",
+    "tenant_id",
+    "purchase_order_id",
+    "status",
+    "items",
+    "reason"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identificador único del evento (UUIDv4)."
+    },
+    "event_type": {
+      "type": "string",
+      "const": "OrdenCompraGenerada"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Momento en que se generó la orden, RFC 3339 / ISO 8601 con offset."
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "purchase_order_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "id de la fila en purchase_orders (Postgres)."
+    },
+    "status": {
+      "type": "string",
+      "const": "DRAFT",
+      "description": "Siempre DRAFT: este evento se emite en el momento de creación, antes de cualquier revisión humana."
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["product_id", "quantity", "unit_cost"],
+        "properties": {
+          "product_id": { "type": "string", "minLength": 1 },
+          "quantity": { "type": "integer", "minimum": 1 },
+          "unit_cost": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    },
+    "reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trigger", "days_until_out_of_stock", "threshold_days"],
+      "description": "Trazabilidad de por qué se generó automáticamente la orden.",
+      "properties": {
+        "trigger": {
+          "type": "string",
+          "const": "low_stock_forecast"
+        },
+        "days_until_out_of_stock": { "type": "integer", "minimum": 0 },
+        "threshold_days": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

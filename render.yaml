@@ -1,0 +1,86 @@
+# Blueprint de Render para AuraPro (https://render.com/docs/blueprint-spec).
+#
+# Cubre exactamente lo que se pidió: backend (FastAPI), frontend
+# (Next.js), Postgres gestionado. NO cubre Redis ni Kafka -- el sistema
+# también los necesita (analytics-engine, workers/outbox-processor,
+# GET /api/v1/system/status, GET /api/v1/analytics/stock-alert) y no
+# están acá porque el pedido fue específicamente "Backend + Frontend +
+# Postgres". Sin eso resuelto por separado (ver DEPLOY.md), esas partes
+# del sistema no van a funcionar en producción aunque el deploy sí
+# "prenda".
+#
+# *** No pude validar este archivo contra una cuenta real de Render
+# (no tengo acceso) ***. Antes de confiar en él: Render → New →
+# Blueprint → conectá el repo. Render muestra una vista previa de todo
+# lo que va a crear ANTES de crear nada -- ahí aparecen errores de
+# sintaxis o de campos que hayan cambiado de nombre, sin gastar ningún
+# recurso. Ver DEPLOY.md para los pasos completos.
+
+databases:
+  - name: aurapro-postgres
+    databaseName: aurapro
+    user: aurapro
+    plan: free # 90 días de retención en el free tier de Render -- ver DEPLOY.md
+
+services:
+  - type: web
+    name: aurapro-backend
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      # generateValue: Render genera un valor aleatorio criptográfico y
+      # lo guarda como secret -- nunca queda en este archivo ni en el
+      # repo. Reemplaza el "change-me" que usamos en desarrollo local.
+      - key: SECRET_KEY
+        generateValue: true
+
+      # fromDatabase conecta esto a la Postgres declarada arriba.
+      # Render arma la connection string completa (usuario, password,
+      # host interno, db) -- no hace falta escribirla a mano.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aurapro-postgres
+          property: connectionString
+
+      # sync: false = "Render va a pedir que lo completes vos en el
+      # dashboard, no lo va a inferir solo". Lo dejo así a propósito en
+      # vez de intentar referenciar la URL del frontend automáticamente
+      # (fromService) -- no pude confirmar la sintaxis exacta contra una
+      # cuenta real, y prefiero un paso manual documentado en DEPLOY.md
+      # antes que una referencia que quizás no resuelva. Ver paso 3 de
+      # DEPLOY.md para el valor exacto.
+      - key: CORS_ORIGINS
+        sync: false
+
+      # Este sistema necesita Redis y Kafka además de Postgres (ver la
+      # nota al principio del archivo). Sin esto seteado a instancias
+      # reales, /api/v1/system/status y /api/v1/analytics/* van a
+      # responder con el servicio correspondiente en healthy=false, no
+      # con un error de arranque -- el resto del backend sigue andando.
+      - key: REDIS_URL
+        sync: false
+      - key: KAFKA_BOOTSTRAP_SERVERS
+        sync: false
+
+  - type: web
+    name: aurapro-frontend
+    runtime: docker
+    rootDir: frontend
+    dockerfilePath: Dockerfile
+    plan: free
+    envVars:
+      # *** Leer esto antes de asumir que anda ***: NEXT_PUBLIC_API_URL
+      # se hornea en el bundle del cliente durante `npm run build`
+      # (Next.js lo hace así, no es negociable) -- ver el comentario en
+      # frontend/Dockerfile. Que quede seteada acá como env var no
+      # garantiza que Render la pase como build arg al Dockerfile (nuestro
+      # Dockerfile ya declara `ARG NEXT_PUBLIC_API_URL`, así que SI Render
+      # pasa las envVars como build args para servicios docker, esto
+      # alcanza solo). No pude confirmarlo contra una cuenta real. Paso 3
+      # de DEPLOY.md tiene la verificación exacta y el fallback manual
+      # (forzar un rebuild) si el valor no quedó aplicado.
+      - key: NEXT_PUBLIC_API_URL
+        sync: false

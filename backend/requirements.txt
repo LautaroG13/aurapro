@@ -1,0 +1,15 @@
+fastapi==0.115.*
+uvicorn[standard]==0.32.*
+pydantic-settings==2.*
+sqlalchemy==2.*
+alembic==1.*
+psycopg2-binary==2.9.*
+redis==5.*
+aiokafka==0.11.*
+
+# Identity / multi-tenancy (nuevo)
+asyncpg==0.30.*
+PyJWT==2.*
+bcrypt==4.*
+email-validator==2.*
+greenlet==3.*

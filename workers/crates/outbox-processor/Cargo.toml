@@ -1,0 +1,15 @@
+[package]
+name = "outbox-processor"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+worker-core = { path = "../worker-core" }
+tokio.workspace = true
+rdkafka.workspace = true
+sqlx.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+uuid.workspace = true

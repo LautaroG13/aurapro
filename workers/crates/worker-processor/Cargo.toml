@@ -1,0 +1,12 @@
+[package]
+name = "worker-processor"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+worker-core = { path = "../worker-core" }
+tokio.workspace = true
+rdkafka.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true

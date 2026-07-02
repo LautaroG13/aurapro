@@ -1,0 +1,9 @@
+# Definición declarativa de topics Kafka para AuraPro.
+# Referencia para creación manual o vía script de setup; con
+# KAFKA_AUTO_CREATE_TOPICS_ENABLE=true los topics también se
+# autocrean al primer publish en el entorno local.
+
+topics: []
+  # - name: aurapro.events.example
+  #   partitions: 3
+  #   replication_factor: 1

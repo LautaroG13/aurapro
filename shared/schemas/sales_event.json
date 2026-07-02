@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aurapro.dev/schemas/sales_event.json",
+  "title": "VentaRealizada",
+  "description": "Evento emitido cuando se completa una venta en AuraPro. Contrato compartido entre el Producer (FastAPI) y los Consumers (Rust).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "timestamp",
+    "tenant_id",
+    "product_details",
+    "transaction_amount"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identificador único del evento (UUIDv4). Usado para idempotencia en los consumers."
+    },
+    "event_type": {
+      "type": "string",
+      "const": "VentaRealizada"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Versión del contrato. Incrementar ante cambios breaking."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Momento en que se realizó la venta, en formato RFC 3339 / ISO 8601 con offset (ej. 2026-07-01T14:32:00Z)."
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identificador del tenant/organización dueña de la venta."
+    },
+    "product_details": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Líneas de producto incluidas en la venta.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["product_id", "name", "quantity", "unit_price"],
+        "properties": {
+          "product_id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "quantity": { "type": "integer", "minimum": 1 },
+          "unit_price": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    },
+    "transaction_amount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amount", "currency"],
+      "description": "Monto total de la transacción. Debe ser consistente con la suma de product_details.",
+      "properties": {
+        "amount": { "type": "number", "exclusiveMinimum": 0 },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "Código de moneda ISO 4217 (ej. USD, ARS)."
+        }
+      }
+    }
+  }
+}
