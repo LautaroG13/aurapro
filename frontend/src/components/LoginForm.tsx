@@ -19,39 +19,51 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   });
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        loginMutation.mutate();
-      }}
-    >
-      <h2>Iniciar sesión</h2>
-      <div>
-        <label>
+    <div className="flex min-h-screen items-center justify-center bg-neutral-50 p-6">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          loginMutation.mutate();
+        }}
+        className="aura-card flex w-full max-w-sm flex-col gap-4"
+      >
+        <div>
+          <h1 className="mb-1">AuraPro</h1>
+          <h2 className="font-normal text-neutral-500">Iniciar sesión</h2>
+        </div>
+
+        <label className="aura-label">
           Email
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            className="aura-input"
           />
         </label>
-      </div>
-      <div>
-        <label>
+
+        <label className="aura-label">
           Contraseña
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            className="aura-input"
           />
         </label>
-      </div>
-      <button type="submit" disabled={loginMutation.isPending}>
-        {loginMutation.isPending ? "Ingresando..." : "Ingresar"}
-      </button>
-      {loginMutation.isError && <p role="alert">{(loginMutation.error as Error).message}</p>}
-    </form>
+
+        <button type="submit" disabled={loginMutation.isPending} className="aura-btn-primary">
+          {loginMutation.isPending ? "Ingresando..." : "Ingresar"}
+        </button>
+
+        {loginMutation.isError && (
+          <p role="alert" className="aura-alert">
+            {(loginMutation.error as Error).message}
+          </p>
+        )}
+      </form>
+    </div>
   );
 }

@@ -47,7 +47,10 @@
       "Bash(top -l 1 -n 3 -o mem)",
       "Bash(rm -rf .next)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=1536\" nohup npm run build)",
-      "Bash(echo \"PID: $!\")"
+      "Bash(echo \"PID: $!\")",
+      "Bash(npx next *)",
+      "Bash(curl -sv http://localhost:3000/sales)",
+      "Bash(kill -9 66930)"
     ]
   }
 }

@@ -86,13 +86,17 @@ export function SaleForm() {
   const canSubmit = customerId !== "" && cart.length > 0 && !saleMutation.isPending;
 
   return (
-    <div>
+    <div className="aura-card flex flex-col gap-5">
       <h2>Nueva venta</h2>
 
-      <div>
-        <label>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="aura-label">
           Cliente
-          <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+          <select
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
+            className="aura-select"
+          >
             <option value="">Seleccioná un cliente...</option>
             {customersQuery.data?.map((c) => (
               <option key={c.id} value={c.id}>
@@ -100,14 +104,18 @@ export function SaleForm() {
               </option>
             ))}
           </select>
+          {customersQuery.isLoading && (
+            <span className="text-xs text-neutral-400">cargando clientes...</span>
+          )}
         </label>
-        {customersQuery.isLoading && <span> cargando clientes...</span>}
-      </div>
 
-      <div>
-        <label>
+        <label className="aura-label">
           Medio de pago
-          <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+          <select
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
+            className="aura-select"
+          >
             {PAYMENT_METHODS.map((method) => (
               <option key={method} value={method}>
                 {method}
@@ -117,66 +125,93 @@ export function SaleForm() {
         </label>
       </div>
 
-      <div>
+      <div className="flex flex-col gap-2">
         <input
           type="text"
           placeholder="Buscar producto por nombre..."
           value={productSearch}
           onChange={(e) => setProductSearch(e.target.value)}
+          className="aura-input"
         />
-        {productsQuery.isLoading && <p>Cargando productos...</p>}
-        <ul>
+        {productsQuery.isLoading && <p className="text-sm text-neutral-500">Cargando productos...</p>}
+        <ul className="flex max-h-56 flex-col divide-y divide-neutral-100 overflow-y-auto rounded-lg border border-neutral-200">
           {filteredProducts.map((product) => (
-            <li key={product.id}>
-              {product.name} — ${product.price.toFixed(2)} (stock: {product.current_stock}){" "}
+            <li
+              key={product.id}
+              className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+            >
+              <span>
+                {product.name} — ${product.price.toFixed(2)} (stock: {product.current_stock})
+              </span>
               <button
                 type="button"
                 onClick={() => addToCart(product)}
                 disabled={product.current_stock <= 0}
+                className="aura-btn-secondary px-3 py-1"
               >
                 Agregar
               </button>
             </li>
           ))}
-          {productsQuery.data && filteredProducts.length === 0 && <li>Sin resultados.</li>}
+          {productsQuery.data && filteredProducts.length === 0 && (
+            <li className="px-3 py-2 text-sm text-neutral-400">Sin resultados.</li>
+          )}
         </ul>
       </div>
 
-      <div>
+      <div className="flex flex-col gap-2">
         <h3>Carrito</h3>
-        {cart.length === 0 && <p>Sin productos agregados.</p>}
-        <ul>
+        {cart.length === 0 && <p className="text-sm text-neutral-500">Sin productos agregados.</p>}
+        <ul className="flex flex-col divide-y divide-neutral-100">
           {cart.map((line) => (
-            <li key={line.product.id}>
-              {line.product.name} —{" "}
-              <input
-                type="number"
-                min={1}
-                max={line.product.current_stock}
-                value={line.quantity}
-                onChange={(e) => updateQuantity(line.product.id, Number(e.target.value))}
-                style={{ width: 60 }}
-              />{" "}
-              x ${line.product.price.toFixed(2)} = $
-              {(line.product.price * line.quantity).toFixed(2)}{" "}
-              <button type="button" onClick={() => removeFromCart(line.product.id)}>
+            <li
+              key={line.product.id}
+              className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+            >
+              <span className="flex items-center gap-2">
+                {line.product.name}
+                <input
+                  type="number"
+                  min={1}
+                  max={line.product.current_stock}
+                  value={line.quantity}
+                  onChange={(e) => updateQuantity(line.product.id, Number(e.target.value))}
+                  className="aura-input w-16 px-2 py-1"
+                />
+                x ${line.product.price.toFixed(2)} = $
+                {(line.product.price * line.quantity).toFixed(2)}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeFromCart(line.product.id)}
+                className="aura-btn-danger px-3 py-1"
+              >
                 Quitar
               </button>
             </li>
           ))}
         </ul>
-        <p>
+        <p className="text-right">
           <strong>Total estimado: ${estimatedTotal.toFixed(2)}</strong>
         </p>
       </div>
 
-      <button type="button" disabled={!canSubmit} onClick={() => saleMutation.mutate()}>
+      <button
+        type="button"
+        disabled={!canSubmit}
+        onClick={() => saleMutation.mutate()}
+        className="aura-btn-primary self-end"
+      >
         {saleMutation.isPending ? "Registrando..." : "Confirmar venta"}
       </button>
 
-      {saleMutation.isError && <p role="alert">{(saleMutation.error as Error).message}</p>}
+      {saleMutation.isError && (
+        <p role="alert" className="aura-alert">
+          {(saleMutation.error as Error).message}
+        </p>
+      )}
       {saleMutation.isSuccess && (
-        <p>
+        <p className="text-sm text-neutral-600">
           Venta registrada ({saleMutation.data.id}) — Total real: $
           {saleMutation.data.total_amount.toFixed(2)} {saleMutation.data.currency}
         </p>

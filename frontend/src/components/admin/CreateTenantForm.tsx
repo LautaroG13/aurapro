@@ -33,42 +33,59 @@ export function CreateTenantForm() {
         e.preventDefault();
         createMutation.mutate();
       }}
+      className="aura-card flex flex-col gap-4"
     >
       <h2>Crear tenant</h2>
-      <div>
-        <label>
-          Nombre de la empresa
-          <input value={tenantName} onChange={(e) => setTenantName(e.target.value)} required />
-        </label>
-      </div>
-      <div>
-        <label>
-          Email del admin inicial
-          <input
-            type="email"
-            value={adminEmail}
-            onChange={(e) => setAdminEmail(e.target.value)}
-            required
-          />
-        </label>
-      </div>
-      <div>
-        <label>
-          Contraseña inicial
-          <input
-            type="password"
-            value={adminPassword}
-            onChange={(e) => setAdminPassword(e.target.value)}
-            minLength={8}
-            required
-          />
-        </label>
-      </div>
-      <button type="submit" disabled={createMutation.isPending}>
+
+      <label className="aura-label">
+        Nombre de la empresa
+        <input
+          value={tenantName}
+          onChange={(e) => setTenantName(e.target.value)}
+          required
+          className="aura-input"
+        />
+      </label>
+
+      <label className="aura-label">
+        Email del admin inicial
+        <input
+          type="email"
+          value={adminEmail}
+          onChange={(e) => setAdminEmail(e.target.value)}
+          required
+          className="aura-input"
+        />
+      </label>
+
+      <label className="aura-label">
+        Contraseña inicial
+        <input
+          type="password"
+          value={adminPassword}
+          onChange={(e) => setAdminPassword(e.target.value)}
+          minLength={8}
+          required
+          className="aura-input"
+        />
+      </label>
+
+      <button
+        type="submit"
+        disabled={createMutation.isPending}
+        className="aura-btn-primary self-start"
+      >
         {createMutation.isPending ? "Creando..." : "Crear tenant"}
       </button>
-      {createMutation.isError && <p role="alert">{(createMutation.error as Error).message}</p>}
-      {createMutation.isSuccess && <p>Tenant creado: {createMutation.data.name}</p>}
+
+      {createMutation.isError && (
+        <p role="alert" className="aura-alert">
+          {(createMutation.error as Error).message}
+        </p>
+      )}
+      {createMutation.isSuccess && (
+        <p className="text-sm text-emerald-700">Tenant creado: {createMutation.data.name}</p>
+      )}
     </form>
   );
 }
