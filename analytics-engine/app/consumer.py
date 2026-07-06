@@ -11,6 +11,7 @@ ventas; con él, el segundo intento se descarta sin tocar las métricas.
 
 import json
 import logging
+import ssl
 
 from aiokafka import AIOKafkaConsumer
 from pydantic import ValidationError
@@ -69,6 +70,7 @@ async def run() -> None:
         sasl_mechanism="PLAIN",
         sasl_plain_username=settings.kafka_user,
         sasl_plain_password=settings.kafka_password,
+        ssl_context=ssl.create_default_context(),
     )
     await consumer.start()
     logger.info("analytics-engine escuchando %s (group=%s)", TOPIC, GROUP_ID)

@@ -1,4 +1,5 @@
 import logging
+import ssl
 
 from aiokafka import AIOKafkaProducer
 
@@ -18,6 +19,7 @@ async def get_producer() -> AIOKafkaProducer:
             sasl_mechanism="PLAIN",
             sasl_plain_username=settings.kafka_user,
             sasl_plain_password=settings.kafka_password,
+            ssl_context=ssl.create_default_context(),
         )
         try:
             await producer.start()
