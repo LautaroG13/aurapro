@@ -65,6 +65,10 @@ async def run() -> None:
         group_id=GROUP_ID,
         enable_auto_commit=False,
         auto_offset_reset="earliest",
+        security_protocol="SASL_SSL",
+        sasl_mechanism="PLAIN",
+        sasl_plain_username=settings.kafka_user,
+        sasl_plain_password=settings.kafka_password,
     )
     await consumer.start()
     logger.info("analytics-engine escuchando %s (group=%s)", TOPIC, GROUP_ID)
