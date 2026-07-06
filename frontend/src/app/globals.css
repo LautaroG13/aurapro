@@ -26,6 +26,11 @@
   }
 }
 
+@utility aura-btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
+    transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+}
+
 @layer components {
   /* Contenedor tipo tarjeta usado por los paneles de cada sección */
   .aura-card {
@@ -42,11 +47,6 @@
       shadow-sm outline-none transition-colors placeholder:text-neutral-400
       focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200
       disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400;
-  }
-
-  .aura-btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
-      transition-colors disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .aura-btn-primary {
