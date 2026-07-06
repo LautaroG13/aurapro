@@ -1,18 +1,19 @@
+import logging
+import sys
+
+from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
-    """Los defaults asumen que el backend corre *dentro* de la red de
-    Docker Compose (ver docker-compose.yml), donde Postgres/Redis/Kafka
-    se resuelven por nombre de servicio (postgres, redis, kafka), no por
-    localhost.
-
-    Para desarrollo local en Mac (el backend corriendo directo en el
-    host contra la infra levantada con `docker compose up -d`), estos
-    valores se sobrescriben desde el `.env` de la raíz del proyecto —
-    el mismo archivo que ya usa `docker compose` (ver README, `cp
-    .env.example .env`), no uno nuevo por servicio. Ahí los hostnames
-    son `localhost` con los puertos publicados al host.
+    """Infra cloud-native (Render + Upstash + Confluent Cloud), no
+    Docker Compose. redis_url, kafka_bootstrap_servers, kafka_user y
+    kafka_password no tienen default: sin ellas seteadas en el entorno
+    real, la app debe fallar rápido en vez de intentar resolver
+    `redis`/`kafka` por nombre de servicio, que no existen fuera de la
+    red de Docker Compose usada en desarrollo local.
     """
 
     model_config = SettingsConfigDict(env_file="../.env", extra="ignore")
@@ -21,8 +22,13 @@ class Settings(BaseSettings):
     secret_key: str = "change-me"
 
     database_url: str = "postgresql://aurapro:aurapro@postgres:5432/aurapro"
-    redis_url: str = "redis://redis:6379/0"
-    kafka_bootstrap_servers: str = "kafka:9092"
+
+    # Upstash Redis (rediss://, TLS incluido) y Confluent Cloud Kafka
+    # (SASL_SSL). Sin default a propósito -- ver docstring de la clase.
+    redis_url: str
+    kafka_bootstrap_servers: str
+    kafka_user: str
+    kafka_password: str
 
     # Orígenes permitidos por CORS. El frontend (Next.js, puerto 3000) y
     # el backend (puerto 8000) son orígenes distintos aunque compartan
@@ -45,4 +51,17 @@ class Settings(BaseSettings):
         return self.database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
 
-settings = Settings()
+try:
+    settings = Settings()
+except ValidationError as exc:
+    missing = [".".join(str(part) for part in error["loc"]) for error in exc.errors() if error["type"] == "missing"]
+    if missing:
+        logger.critical(
+            "faltan variables de entorno obligatorias: %s -- seteá REDIS_URL "
+            "(Upstash, rediss://), KAFKA_BOOTSTRAP_SERVERS, KAFKA_USER y "
+            "KAFKA_PASSWORD (Confluent Cloud) antes de arrancar el backend",
+            ", ".join(missing),
+        )
+    else:
+        logger.critical("error de configuración: %s", exc)
+    sys.exit(1)
