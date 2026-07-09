@@ -12,6 +12,7 @@ configuración de conexión.
 """
 
 import asyncio
+import ssl
 
 from aiokafka.admin import AIOKafkaAdminClient
 from sqlalchemy import text
@@ -49,6 +50,11 @@ async def _check_kafka() -> ServiceStatus:
     admin_client = AIOKafkaAdminClient(
         bootstrap_servers=settings.kafka_bootstrap_servers,
         request_timeout_ms=KAFKA_ADMIN_TIMEOUT_MS,
+        security_protocol="SASL_SSL",
+        sasl_mechanism="PLAIN",
+        sasl_plain_username=settings.kafka_user,
+        sasl_plain_password=settings.kafka_password,
+        ssl_context=ssl.create_default_context(),
     )
     try:
         await admin_client.start()
