@@ -6,15 +6,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.tenant_session import get_tenant_db
 from app.modules.identity.dependencies import CurrentUser, get_current_user, require_role
 from app.modules.identity.models import UserRole
-from app.modules.products.schemas import ProductCreate, ProductRead, ProductUpdate
+from app.modules.products.schemas import (
+    ProductCreate,
+    ProductRead,
+    ProductUpdate,
+    ProductVariantCreate,
+    ProductVariantRead,
+    ProductVariantUpdate,
+)
 from app.modules.products.services import (
     ProductInUseError,
     ProductNotFoundError,
+    ProductVariantNotFoundError,
     create_product,
+    create_variant,
     delete_product,
+    delete_variant,
     get_product,
     list_products,
     update_product,
+    update_variant,
 )
 
 router = APIRouter()
@@ -82,3 +93,45 @@ async def delete_product_endpoint(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ProductInUseError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/{product_id}/variants", response_model=ProductVariantRead, status_code=201)
+async def create_variant_endpoint(
+    product_id: UUID,
+    payload: ProductVariantCreate,
+    current_user: CurrentUser = Depends(require_role(*WRITE_ROLES)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> ProductVariantRead:
+    try:
+        variant = await create_variant(db, current_user.tenant_id, product_id, payload)
+    except ProductNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return ProductVariantRead.model_validate(variant)
+
+
+@router.patch("/{product_id}/variants/{variant_id}", response_model=ProductVariantRead)
+async def update_variant_endpoint(
+    product_id: UUID,
+    variant_id: UUID,
+    payload: ProductVariantUpdate,
+    _current_user: CurrentUser = Depends(require_role(*WRITE_ROLES)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> ProductVariantRead:
+    try:
+        variant = await update_variant(db, product_id, variant_id, payload)
+    except ProductVariantNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return ProductVariantRead.model_validate(variant)
+
+
+@router.delete("/{product_id}/variants/{variant_id}", status_code=204)
+async def delete_variant_endpoint(
+    product_id: UUID,
+    variant_id: UUID,
+    _current_user: CurrentUser = Depends(require_role(*WRITE_ROLES)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> None:
+    try:
+        await delete_variant(db, product_id, variant_id)
+    except ProductVariantNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
