@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.modules.products.models import Product, ProductVariant
 from app.modules.products.schemas import (
@@ -36,12 +37,21 @@ async def create_product(db: AsyncSession, tenant_id: UUID, payload: ProductCrea
     db.add(product)
     await db.commit()
     await db.refresh(product)
+    # Recién creado no tiene variantes todavía, pero ProductRead
+    # serializa `variants` -- sin cargar la relación acá, acceder a
+    # product.variants durante ProductRead.model_validate() (fuera del
+    # loop async de SQLAlchemy) tira MissingGreenlet.
+    await db.refresh(product, attribute_names=["variants"])
     return product
 
 
 async def list_products(db: AsyncSession, skip: int = 0, limit: int = 50) -> list[Product]:
     result = await db.execute(
-        select(Product).order_by(Product.created_at.desc()).offset(skip).limit(limit)
+        select(Product)
+        .options(selectinload(Product.variants))
+        .order_by(Product.created_at.desc())
+        .offset(skip)
+        .limit(limit)
     )
     return list(result.scalars().all())
 
@@ -51,7 +61,9 @@ async def get_product(db: AsyncSession, product_id: UUID) -> Product:
     excluyó de la query -- esto tira NotFound, no un 403. Es la
     respuesta correcta: no confirmarle a un tenant que el ID de otro
     tenant existe."""
-    result = await db.execute(select(Product).where(Product.id == product_id))
+    result = await db.execute(
+        select(Product).options(selectinload(Product.variants)).where(Product.id == product_id)
+    )
     product = result.scalar_one_or_none()
     if product is None:
         raise ProductNotFoundError(f"Producto {product_id} no encontrado")
@@ -64,6 +76,11 @@ async def update_product(db: AsyncSession, product_id: UUID, payload: ProductUpd
         setattr(product, field, value)
     await db.commit()
     await db.refresh(product)
+    # commit() expira todos los atributos del objeto, incluyendo
+    # `variants` (ya venía cargado por el selectinload de get_product)
+    # -- hay que recargarlo explícito antes de que la ruta lo
+    # serialice con ProductRead, mismo motivo que en create_product.
+    await db.refresh(product, attribute_names=["variants"])
     return product
 
 
