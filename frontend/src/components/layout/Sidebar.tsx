@@ -18,6 +18,7 @@ export function Sidebar({ isSuperadmin }: SidebarProps) {
       <nav className="flex flex-1 flex-col gap-1 px-3">
         <NavLink href="/">Inicio</NavLink>
         <NavLink href="/sales">Ventas</NavLink>
+        <NavLink href="/products">Productos</NavLink>
         {isSuperadmin && <NavLink href="/admin">Admin</NavLink>}
       </nav>
 

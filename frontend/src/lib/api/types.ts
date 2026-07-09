@@ -55,6 +55,27 @@ export interface ProductRead {
 }
 
 /**
+ * Espeja backend/app/modules/products/schemas.py::ProductCreate.
+ */
+export interface ProductCreate {
+  name: string;
+  description?: string | null;
+  price: number;
+  current_stock?: number;
+}
+
+/**
+ * Espeja backend/app/modules/products/schemas.py::ProductUpdate.
+ * Todos los campos opcionales -- PATCH parcial, igual que el backend.
+ */
+export interface ProductUpdate {
+  name?: string;
+  description?: string | null;
+  price?: number;
+  current_stock?: number;
+}
+
+/**
  * Espeja backend/app/modules/customers/schemas.py::CustomerRead.
  */
 export interface CustomerRead {
