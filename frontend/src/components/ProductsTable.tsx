@@ -44,6 +44,7 @@ export function ProductsTable({ onEdit }: ProductsTableProps) {
           <thead>
             <tr>
               <th>Nombre</th>
+              <th>SKU</th>
               <th>Precio</th>
               <th>Stock</th>
               <th></th>
@@ -53,6 +54,7 @@ export function ProductsTable({ onEdit }: ProductsTableProps) {
             {productsQuery.data?.map((product) => (
               <tr key={product.id}>
                 <td>{product.name}</td>
+                <td>{product.sku ?? "—"}</td>
                 <td>${product.price.toFixed(2)}</td>
                 <td>{product.current_stock}</td>
                 <td className="flex gap-2">
@@ -80,7 +82,7 @@ export function ProductsTable({ onEdit }: ProductsTableProps) {
             ))}
             {productsQuery.data?.length === 0 && (
               <tr>
-                <td colSpan={4} className="text-center text-neutral-400">
+                <td colSpan={5} className="text-center text-neutral-400">
                   Sin productos todavía.
                 </td>
               </tr>

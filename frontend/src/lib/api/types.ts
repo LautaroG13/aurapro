@@ -42,6 +42,34 @@ export interface TokenResponse {
 }
 
 /**
+ * Espeja backend/app/modules/products/schemas.py::ProductVariantRead.
+ */
+export interface ProductVariantRead {
+  id: string;
+  product_id: string;
+  attributes: Record<string, string>;
+  stock: number;
+  created_at: string;
+}
+
+/**
+ * Espeja backend/app/modules/products/schemas.py::ProductVariantCreate.
+ */
+export interface ProductVariantCreate {
+  attributes?: Record<string, string>;
+  stock?: number;
+}
+
+/**
+ * Espeja backend/app/modules/products/schemas.py::ProductVariantUpdate.
+ * Todos los campos opcionales -- PATCH parcial, igual que el backend.
+ */
+export interface ProductVariantUpdate {
+  attributes?: Record<string, string>;
+  stock?: number;
+}
+
+/**
  * Espeja backend/app/modules/products/schemas.py::ProductRead.
  */
 export interface ProductRead {
@@ -50,8 +78,14 @@ export interface ProductRead {
   name: string;
   description: string | null;
   price: number;
+  cost: number | null;
   current_stock: number;
+  category: string | null;
+  sku: string | null;
+  barcode: string | null;
+  image_url: string | null;
   created_at: string;
+  variants: ProductVariantRead[];
 }
 
 /**
@@ -61,7 +95,12 @@ export interface ProductCreate {
   name: string;
   description?: string | null;
   price: number;
+  cost?: number | null;
   current_stock?: number;
+  category?: string | null;
+  sku?: string | null;
+  barcode?: string | null;
+  image_url?: string | null;
 }
 
 /**
@@ -72,7 +111,12 @@ export interface ProductUpdate {
   name?: string;
   description?: string | null;
   price?: number;
+  cost?: number | null;
   current_stock?: number;
+  category?: string | null;
+  sku?: string | null;
+  barcode?: string | null;
+  image_url?: string | null;
 }
 
 /**
