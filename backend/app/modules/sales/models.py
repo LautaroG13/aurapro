@@ -28,11 +28,16 @@ class Sale(Base, TenantModel):
         UUID(as_uuid=True), ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     total_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
+    # server_default además de default: sin esto, un INSERT que llegue
+    # por fuera del ORM (no vía la Session de SQLAlchemy) rompe con
+    # NOT NULL violation en vez de heredar 'USD'/'COMPLETED' como hacía
+    # init.sql a nivel de Postgres.
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD", server_default="USD")
     status: Mapped[SaleStatus] = mapped_column(
         Enum(SaleStatus, name="sale_status", native_enum=False, length=20),
         nullable=False,
         default=SaleStatus.COMPLETED,
+        server_default=SaleStatus.COMPLETED.value,
     )
     payment_method: Mapped[str] = mapped_column(String, nullable=False)
 
