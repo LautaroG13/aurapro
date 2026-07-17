@@ -10,6 +10,7 @@ from app.modules.products.schemas import (
     ProductCreate,
     ProductRead,
     ProductUpdate,
+    ProductVariantBulkCreate,
     ProductVariantCreate,
     ProductVariantRead,
     ProductVariantUpdate,
@@ -17,9 +18,12 @@ from app.modules.products.schemas import (
 from app.modules.products.services import (
     ProductInUseError,
     ProductNotFoundError,
+    ProductVariantDuplicateError,
     ProductVariantNotFoundError,
+    ProductVariantSkuConflictError,
     create_product,
     create_variant,
+    create_variants_bulk,
     delete_product,
     delete_variant,
     get_product,
@@ -107,6 +111,24 @@ async def create_variant_endpoint(
     except ProductNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return ProductVariantRead.model_validate(variant)
+
+
+@router.post("/{product_id}/variants/bulk", response_model=list[ProductVariantRead], status_code=201)
+async def create_variants_bulk_endpoint(
+    product_id: UUID,
+    payload: ProductVariantBulkCreate,
+    current_user: CurrentUser = Depends(require_role(*WRITE_ROLES)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> list[ProductVariantRead]:
+    try:
+        variants = await create_variants_bulk(db, current_user.tenant_id, product_id, payload)
+    except ProductNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProductVariantDuplicateError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ProductVariantSkuConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return [ProductVariantRead.model_validate(v) for v in variants]
 
 
 @router.patch("/{product_id}/variants/{variant_id}", response_model=ProductVariantRead)

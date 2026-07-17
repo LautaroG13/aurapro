@@ -3,8 +3,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { createVariant, deleteVariant, listProducts, updateVariant } from "@/lib/api/products";
-import type { ProductRead, ProductVariantRead } from "@/lib/api/types";
+import {
+  createVariant,
+  createVariantsBulk,
+  deleteVariant,
+  listProducts,
+  updateVariant,
+} from "@/lib/api/products";
+import type { ProductRead, ProductVariantCreate, ProductVariantRead } from "@/lib/api/types";
 
 interface AttributePair {
   key: string;
@@ -24,20 +30,23 @@ function pairsToAttributes(pairs: AttributePair[]): Record<string, string> {
 
 interface VariantAttributesEditorProps {
   initialAttributes: Record<string, string>;
+  initialSku: string | null;
   initialStock: number;
   isSaving: boolean;
-  onSave: (attributes: Record<string, string>, stock: number) => void;
+  onSave: (attributes: Record<string, string>, sku: string | null, stock: number) => void;
   onCancel: () => void;
 }
 
 function VariantAttributesEditor({
   initialAttributes,
+  initialSku,
   initialStock,
   isSaving,
   onSave,
   onCancel,
 }: VariantAttributesEditorProps) {
   const [pairs, setPairs] = useState<AttributePair[]>(attributesToPairs(initialAttributes));
+  const [sku, setSku] = useState(initialSku ?? "");
   const [stock, setStock] = useState(String(initialStock));
 
   return (
@@ -79,6 +88,11 @@ function VariantAttributesEditor({
       </button>
 
       <label className="aura-label">
+        SKU (opcional)
+        <input value={sku} onChange={(e) => setSku(e.target.value)} className="aura-input" />
+      </label>
+
+      <label className="aura-label">
         Stock
         <input
           type="number"
@@ -94,7 +108,9 @@ function VariantAttributesEditor({
         <button
           type="button"
           disabled={isSaving}
-          onClick={() => onSave(pairsToAttributes(pairs), Number(stock))}
+          onClick={() =>
+            onSave(pairsToAttributes(pairs), sku.trim() === "" ? null : sku.trim(), Number(stock))
+          }
           className="aura-btn-primary px-3 py-1"
         >
           {isSaving ? "Guardando..." : "Guardar"}
@@ -113,13 +129,229 @@ function formatAttributes(attributes: Record<string, string>): string {
   return entries.map(([key, value]) => `${key}: ${value}`).join(", ");
 }
 
+interface AttributeAxis {
+  name: string;
+  valuesRaw: string;
+}
+
+interface GeneratedRow {
+  attributes: Record<string, string>;
+  sku: string;
+  stock: string;
+}
+
+function cartesianProduct(axes: { name: string; values: string[] }[]): Record<string, string>[] {
+  return axes.reduce<Record<string, string>[]>(
+    (combos, axis) => combos.flatMap((combo) => axis.values.map((value) => ({ ...combo, [axis.name]: value }))),
+    [{}]
+  );
+}
+
+// Quita acentos y cualquier caracter que no sea alfanumérico -- un SKU
+// no debería depender de que el usuario haya tipeado "Café" vs "cafe"
+// de forma consistente.
+function skuPart(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "");
+}
+
+function buildAutoSku(productSku: string | null, attributes: Record<string, string>): string {
+  // El SKU del producto se usa literal (no se le aplica skuPart): si ya
+  // tiene guiones propios (ej. "REM-001"), quedan intactos como prefijo
+  // -- solo los valores de los atributos se normalizan.
+  const parts = [productSku ?? "", ...Object.values(attributes).map(skuPart)].filter(Boolean);
+  return parts.join("-");
+}
+
+interface VariantCombinationGeneratorProps {
+  productSku: string | null;
+  isSaving: boolean;
+  onCreate: (variants: ProductVariantCreate[]) => void;
+  onCancel: () => void;
+}
+
+function VariantCombinationGenerator({
+  productSku,
+  isSaving,
+  onCreate,
+  onCancel,
+}: VariantCombinationGeneratorProps) {
+  const [axes, setAxes] = useState<AttributeAxis[]>([{ name: "", valuesRaw: "" }]);
+  const [rows, setRows] = useState<GeneratedRow[] | null>(null);
+
+  const parsedAxes = axes
+    .map((axis) => ({
+      name: axis.name.trim(),
+      values: axis.valuesRaw
+        .split(",")
+        .map((v) => v.trim())
+        .filter((v) => v !== ""),
+    }))
+    .filter((axis) => axis.name !== "" && axis.values.length > 0);
+
+  const handleGenerate = () => {
+    const combos = cartesianProduct(parsedAxes);
+    setRows(
+      combos.map((attributes) => ({
+        attributes,
+        sku: buildAutoSku(productSku, attributes),
+        stock: "0",
+      }))
+    );
+  };
+
+  if (rows === null) {
+    return (
+      <div className="flex flex-col gap-3 rounded border border-neutral-700 p-3">
+        <p className="text-sm text-neutral-400">
+          Definí uno o más atributos con sus valores posibles (separados por coma). Se generará una
+          variante por cada combinación.
+        </p>
+        {axes.map((axis, index) => (
+          <div key={index} className="flex gap-2">
+            <input
+              value={axis.name}
+              onChange={(e) =>
+                setAxes(axes.map((a, i) => (i === index ? { ...a, name: e.target.value } : a)))
+              }
+              placeholder="Atributo (ej. Color)"
+              className="aura-input"
+            />
+            <input
+              value={axis.valuesRaw}
+              onChange={(e) =>
+                setAxes(axes.map((a, i) => (i === index ? { ...a, valuesRaw: e.target.value } : a)))
+              }
+              placeholder="Valores (ej. Negro, Blanco, Gris)"
+              className="aura-input flex-1"
+            />
+            <button
+              type="button"
+              onClick={() => setAxes(axes.filter((_, i) => i !== index))}
+              disabled={axes.length === 1}
+              className="aura-btn-secondary px-2"
+            >
+              -
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => setAxes([...axes, { name: "", valuesRaw: "" }])}
+          className="aura-btn-secondary self-start px-2"
+        >
+          + Atributo
+        </button>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={parsedAxes.length === 0}
+            onClick={handleGenerate}
+            className="aura-btn-primary px-3 py-1"
+          >
+            Generar combinaciones
+          </button>
+          <button type="button" onClick={onCancel} className="aura-btn-secondary px-3 py-1">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const attributeNames = parsedAxes.map((axis) => axis.name);
+
+  return (
+    <div className="flex flex-col gap-3 rounded border border-neutral-700 p-3">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-neutral-400">
+              {attributeNames.map((name) => (
+                <th key={name} className="px-2 py-1">
+                  {name}
+                </th>
+              ))}
+              <th className="px-2 py-1">SKU</th>
+              <th className="px-2 py-1">Stock</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => (
+              <tr key={index} className="border-t border-neutral-800">
+                {attributeNames.map((name) => (
+                  <td key={name} className="px-2 py-1">
+                    {row.attributes[name]}
+                  </td>
+                ))}
+                <td className="px-2 py-1">
+                  <input
+                    value={row.sku}
+                    onChange={(e) =>
+                      setRows(rows.map((r, i) => (i === index ? { ...r, sku: e.target.value } : r)))
+                    }
+                    className="aura-input"
+                  />
+                </td>
+                <td className="px-2 py-1">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={row.stock}
+                    onChange={(e) =>
+                      setRows(rows.map((r, i) => (i === index ? { ...r, stock: e.target.value } : r)))
+                    }
+                    className="aura-input w-24"
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={isSaving}
+          onClick={() =>
+            onCreate(
+              rows.map((row) => ({
+                attributes: row.attributes,
+                sku: row.sku.trim() === "" ? null : row.sku.trim(),
+                stock: Number(row.stock) || 0,
+              }))
+            )
+          }
+          className="aura-btn-primary px-3 py-1"
+        >
+          {isSaving ? "Creando..." : `Crear las ${rows.length} variantes`}
+        </button>
+        <button type="button" onClick={() => setRows(null)} className="aura-btn-secondary px-3 py-1">
+          Volver a los atributos
+        </button>
+        <button type="button" onClick={onCancel} className="aura-btn-secondary px-3 py-1">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 interface ProductVariantsProps {
   product: ProductRead;
 }
 
+type AddMode = "none" | "single" | "generate";
+
 export function ProductVariants({ product }: ProductVariantsProps) {
   const queryClient = useQueryClient();
-  const [isAdding, setIsAdding] = useState(false);
+  const [addMode, setAddMode] = useState<AddMode>("none");
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
 
   // Comparte queryKey con ProductsTable -- React Query dedupea, no
@@ -132,18 +364,32 @@ export function ProductVariants({ product }: ProductVariantsProps) {
   const invalidateProducts = () => queryClient.invalidateQueries({ queryKey: ["products"] });
 
   const createMutation = useMutation({
-    mutationFn: (payload: { attributes: Record<string, string>; stock: number }) =>
+    mutationFn: (payload: { attributes: Record<string, string>; sku: string | null; stock: number }) =>
       createVariant(product.id, payload),
     onSuccess: () => {
       invalidateProducts();
-      setIsAdding(false);
+      setAddMode("none");
+    },
+  });
+
+  const createBulkMutation = useMutation({
+    mutationFn: (variants: ProductVariantCreate[]) => createVariantsBulk(product.id, { variants }),
+    onSuccess: () => {
+      invalidateProducts();
+      setAddMode("none");
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (vars: { variantId: string; attributes: Record<string, string>; stock: number }) =>
+    mutationFn: (vars: {
+      variantId: string;
+      attributes: Record<string, string>;
+      sku: string | null;
+      stock: number;
+    }) =>
       updateVariant(product.id, vars.variantId, {
         attributes: vars.attributes,
+        sku: vars.sku,
         stock: vars.stock,
       }),
     onSuccess: () => {
@@ -161,7 +407,7 @@ export function ProductVariants({ product }: ProductVariantsProps) {
     <div className="flex flex-col gap-3 border-t border-neutral-700 pt-4">
       <h3>Variantes</h3>
 
-      {liveProduct.variants.length === 0 && !isAdding && (
+      {liveProduct.variants.length === 0 && addMode === "none" && (
         <p className="text-sm text-neutral-500">Sin variantes todavía.</p>
       )}
 
@@ -171,10 +417,11 @@ export function ProductVariants({ product }: ProductVariantsProps) {
             <li key={variant.id}>
               <VariantAttributesEditor
                 initialAttributes={variant.attributes}
+                initialSku={variant.sku}
                 initialStock={variant.stock}
                 isSaving={updateMutation.isPending}
-                onSave={(attributes, stock) =>
-                  updateMutation.mutate({ variantId: variant.id, attributes, stock })
+                onSave={(attributes, sku, stock) =>
+                  updateMutation.mutate({ variantId: variant.id, attributes, sku, stock })
                 }
                 onCancel={() => setEditingVariantId(null)}
               />
@@ -182,7 +429,8 @@ export function ProductVariants({ product }: ProductVariantsProps) {
           ) : (
             <li key={variant.id} className="flex items-center justify-between gap-2 text-sm">
               <span>
-                {formatAttributes(variant.attributes)} — stock: {variant.stock}
+                {formatAttributes(variant.attributes)}
+                {variant.sku ? ` — SKU: ${variant.sku}` : ""} — stock: {variant.stock}
               </span>
               <span className="flex gap-2">
                 <button
@@ -210,24 +458,47 @@ export function ProductVariants({ product }: ProductVariantsProps) {
         )}
       </ul>
 
-      {isAdding ? (
+      {addMode === "single" && (
         <VariantAttributesEditor
           initialAttributes={{}}
+          initialSku={null}
           initialStock={0}
           isSaving={createMutation.isPending}
-          onSave={(attributes, stock) => createMutation.mutate({ attributes, stock })}
-          onCancel={() => setIsAdding(false)}
+          onSave={(attributes, sku, stock) => createMutation.mutate({ attributes, sku, stock })}
+          onCancel={() => setAddMode("none")}
         />
-      ) : (
-        <button type="button" onClick={() => setIsAdding(true)} className="aura-btn-secondary self-start">
-          + Agregar variante
-        </button>
       )}
 
-      {(createMutation.isError || updateMutation.isError || deleteMutation.isError) && (
+      {addMode === "generate" && (
+        <VariantCombinationGenerator
+          productSku={liveProduct.sku}
+          isSaving={createBulkMutation.isPending}
+          onCreate={(variants) => createBulkMutation.mutate(variants)}
+          onCancel={() => setAddMode("none")}
+        />
+      )}
+
+      {addMode === "none" && (
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setAddMode("single")} className="aura-btn-secondary">
+            + Agregar variante
+          </button>
+          <button type="button" onClick={() => setAddMode("generate")} className="aura-btn-secondary">
+            + Generar combinaciones
+          </button>
+        </div>
+      )}
+
+      {(createMutation.isError ||
+        updateMutation.isError ||
+        deleteMutation.isError ||
+        createBulkMutation.isError) && (
         <p role="alert" className="aura-alert">
           {(
-            (createMutation.error ?? updateMutation.error ?? deleteMutation.error) as Error
+            (createMutation.error ??
+              updateMutation.error ??
+              deleteMutation.error ??
+              createBulkMutation.error) as Error
           ).message}
         </p>
       )}

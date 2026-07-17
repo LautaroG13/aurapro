@@ -8,6 +8,7 @@ class ProductVariantCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     attributes: dict[str, str] = Field(default_factory=dict)
+    sku: str | None = None
     stock: int = Field(ge=0, default=0)
 
 
@@ -17,6 +18,7 @@ class ProductVariantUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     attributes: dict[str, str] | None = None
+    sku: str | None = None
     stock: int | None = Field(default=None, ge=0)
 
 
@@ -26,8 +28,19 @@ class ProductVariantRead(BaseModel):
     id: UUID
     product_id: UUID
     attributes: dict[str, str]
+    sku: str | None
     stock: int
     created_at: datetime
+
+
+class ProductVariantBulkCreate(BaseModel):
+    """Recibe la matriz completa de combinaciones generada en el
+    frontend -- se crean todas en una sola transacción (ver
+    create_variants_bulk en services.py), nunca un subconjunto."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    variants: list[ProductVariantCreate] = Field(min_length=1)
 
 
 class ProductCreate(BaseModel):

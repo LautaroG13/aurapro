@@ -15,6 +15,7 @@ from app.modules.products.models import Product, ProductVariant
 from app.modules.products.schemas import (
     ProductCreate,
     ProductUpdate,
+    ProductVariantBulkCreate,
     ProductVariantCreate,
     ProductVariantUpdate,
 )
@@ -29,6 +30,22 @@ class ProductInUseError(Exception):
 
 
 class ProductVariantNotFoundError(Exception):
+    pass
+
+
+class ProductVariantDuplicateError(Exception):
+    """SKUs repetidos dentro del mismo payload bulk -- se detecta antes
+    de tocar la base para dar un mensaje específico en vez de un
+    IntegrityError genérico de Postgres."""
+
+    pass
+
+
+class ProductVariantSkuConflictError(Exception):
+    """Un SKU del payload ya existe en la base (de esta u otra
+    variante). Se levanta al capturar el IntegrityError del
+    UniqueConstraint -- ninguna variante del lote queda creada."""
+
     pass
 
 
@@ -125,6 +142,38 @@ async def create_variant(
     await db.commit()
     await db.refresh(variant)
     return variant
+
+
+async def create_variants_bulk(
+    db: AsyncSession, tenant_id: UUID, product_id: UUID, payload: ProductVariantBulkCreate
+) -> list[ProductVariant]:
+    """Crea todas las variantes del lote en una sola transacción: si
+    alguna falla (SKU duplicado, etc.), ninguna se crea."""
+    await get_product(db, product_id)
+
+    seen_skus: set[str] = set()
+    for item in payload.variants:
+        sku = (item.sku or "").strip()
+        if sku and sku in seen_skus:
+            raise ProductVariantDuplicateError(f"El SKU '{sku}' está repetido en el lote")
+        if sku:
+            seen_skus.add(sku)
+
+    variants = [
+        ProductVariant(tenant_id=tenant_id, product_id=product_id, **item.model_dump())
+        for item in payload.variants
+    ]
+    db.add_all(variants)
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise ProductVariantSkuConflictError(
+            "Uno o más SKUs del lote ya existen para este producto"
+        ) from exc
+    for variant in variants:
+        await db.refresh(variant)
+    return variants
 
 
 async def update_variant(

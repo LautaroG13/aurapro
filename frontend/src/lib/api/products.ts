@@ -3,6 +3,7 @@ import type {
   ProductCreate,
   ProductRead,
   ProductUpdate,
+  ProductVariantBulkCreate,
   ProductVariantCreate,
   ProductVariantRead,
   ProductVariantUpdate,
@@ -35,6 +36,16 @@ export async function createVariant(
   payload: ProductVariantCreate
 ): Promise<ProductVariantRead> {
   return apiFetch<ProductVariantRead>(`/api/v1/products/${productId}/variants`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createVariantsBulk(
+  productId: string,
+  payload: ProductVariantBulkCreate
+): Promise<ProductVariantRead[]> {
+  return apiFetch<ProductVariantRead[]>(`/api/v1/products/${productId}/variants/bulk`, {
     method: "POST",
     body: JSON.stringify(payload),
   });

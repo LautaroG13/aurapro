@@ -48,6 +48,7 @@ export interface ProductVariantRead {
   id: string;
   product_id: string;
   attributes: Record<string, string>;
+  sku: string | null;
   stock: number;
   created_at: string;
 }
@@ -57,6 +58,7 @@ export interface ProductVariantRead {
  */
 export interface ProductVariantCreate {
   attributes?: Record<string, string>;
+  sku?: string | null;
   stock?: number;
 }
 
@@ -66,7 +68,15 @@ export interface ProductVariantCreate {
  */
 export interface ProductVariantUpdate {
   attributes?: Record<string, string>;
+  sku?: string | null;
   stock?: number;
+}
+
+/**
+ * Espeja backend/app/modules/products/schemas.py::ProductVariantBulkCreate.
+ */
+export interface ProductVariantBulkCreate {
+  variants: ProductVariantCreate[];
 }
 
 /**

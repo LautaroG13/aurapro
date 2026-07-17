@@ -50,12 +50,18 @@ class ProductVariant(Base, TenantModel):
     a negocios de cualquier rubro, no solo indumentaria."""
 
     __tablename__ = "product_variants"
-    __table_args__ = (CheckConstraint("stock >= 0", name="ck_product_variants_stock_non_negative"),)
+    __table_args__ = (
+        CheckConstraint("stock >= 0", name="ck_product_variants_stock_non_negative"),
+        # Mismo patrón que Product.sku: NULL no choca consigo mismo en
+        # Postgres, así que variantes sin sku no violan este constraint.
+        UniqueConstraint("tenant_id", "sku", name="uq_product_variants_tenant_id_sku"),
+    )
 
     product_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True
     )
     attributes: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default="{}")
+    sku: Mapped[str | None] = mapped_column(String, nullable=True)
     stock: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     product: Mapped["Product"] = relationship(back_populates="variants")
