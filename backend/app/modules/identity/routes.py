@@ -6,17 +6,20 @@ from app.db.async_session import get_async_db
 from app.db.tenant_session import get_tenant_db
 from app.modules.identity.dependencies import CurrentUser, get_current_user, require_role
 from app.modules.identity.models import User, UserRole
-from app.modules.identity.schemas import TenantRegister, TokenResponse, UserLogin, UserRead
+from app.modules.identity.schemas import SalespersonRead, TenantRegister, TokenResponse, UserLogin, UserRead
 from app.modules.identity.services import (
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
     TenantSuspendedError,
     authenticate_user,
     issue_token_for_user,
+    list_salespeople,
     register_tenant,
 )
 
 router = APIRouter()
+
+WRITE_ROLES = (UserRole.ADMIN.value, UserRole.VENDEDOR.value)
 
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
@@ -64,3 +67,12 @@ async def list_users(
     del tenant del token, nunca los de otro."""
     result = await db.execute(select(User))
     return [UserRead.model_validate(u) for u in result.scalars().all()]
+
+
+@router.get("/salespeople", response_model=list[SalespersonRead])
+async def list_salespeople_endpoint(
+    _current_user: CurrentUser = Depends(require_role(*WRITE_ROLES)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> list[SalespersonRead]:
+    salespeople = await list_salespeople(db)
+    return [SalespersonRead.model_validate(s) for s in salespeople]

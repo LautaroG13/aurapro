@@ -42,3 +42,14 @@ class UserRead(BaseModel):
     role: UserRole
     is_superadmin: bool
     created_at: datetime
+
+
+class SalespersonRead(BaseModel):
+    """Vista mínima de User para poblar selects (ej. vendedor default de
+    un cliente) sin exponer role/is_superadmin/tenant_id a un VENDEDOR
+    que no debería ver esos campos de sus compañeros."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    email: str

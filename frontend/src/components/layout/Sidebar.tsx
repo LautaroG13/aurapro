@@ -19,6 +19,7 @@ export function Sidebar({ isSuperadmin }: SidebarProps) {
         <NavLink href="/">Inicio</NavLink>
         <NavLink href="/sales">Ventas</NavLink>
         <NavLink href="/products">Productos</NavLink>
+        <NavLink href="/customers">Clientes</NavLink>
         {isSuperadmin && <NavLink href="/admin">Admin</NavLink>}
       </nav>
 

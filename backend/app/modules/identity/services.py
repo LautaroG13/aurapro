@@ -62,6 +62,11 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
     return user
 
 
+async def list_salespeople(db: AsyncSession) -> list[User]:
+    result = await db.execute(select(User).where(User.role == UserRole.VENDEDOR))
+    return list(result.scalars().all())
+
+
 def issue_token_for_user(user: User) -> str:
     return create_access_token(
         user_id=user.id,

@@ -130,6 +130,31 @@ export interface ProductUpdate {
 }
 
 /**
+ * Espeja backend/app/modules/customers/schemas.py::CustomerTypeRead.
+ */
+export interface CustomerTypeRead {
+  id: string;
+  tenant_id: string;
+  name: string;
+  created_at: string;
+}
+
+/**
+ * Espeja backend/app/modules/customers/schemas.py::CustomerTypeCreate.
+ */
+export interface CustomerTypeCreate {
+  name: string;
+}
+
+/**
+ * Espeja backend/app/modules/identity/schemas.py::SalespersonRead.
+ */
+export interface SalespersonRead {
+  id: string;
+  email: string;
+}
+
+/**
  * Espeja backend/app/modules/customers/schemas.py::CustomerRead.
  */
 export interface CustomerRead {
@@ -139,7 +164,37 @@ export interface CustomerRead {
   email: string | null;
   phone: string | null;
   address: string | null;
+  credit_limit: number | null;
+  default_salesperson_id: string | null;
+  customer_type_id: string | null;
   created_at: string;
+}
+
+/**
+ * Espeja backend/app/modules/customers/schemas.py::CustomerCreate.
+ */
+export interface CustomerCreate {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  credit_limit?: number | null;
+  default_salesperson_id?: string | null;
+  customer_type_id?: string | null;
+}
+
+/**
+ * Espeja backend/app/modules/customers/schemas.py::CustomerUpdate.
+ * Todos los campos opcionales -- PATCH parcial, igual que el backend.
+ */
+export interface CustomerUpdate {
+  name?: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  credit_limit?: number | null;
+  default_salesperson_id?: string | null;
+  customer_type_id?: string | null;
 }
 
 /**
