@@ -6,14 +6,23 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listCustomers } from "@/lib/api/customers";
 import { listProducts } from "@/lib/api/products";
 import { createSale } from "@/lib/api/sales";
-import type { ProductRead } from "@/lib/api/types";
+import type { ProductRead, ProductVariantRead } from "@/lib/api/types";
 
 interface CartLine {
   product: ProductRead;
+  variant: ProductVariantRead | null;
   quantity: number;
 }
 
 const PAYMENT_METHODS = ["cash", "card", "transfer"] as const;
+
+function lineKey(productId: string, variantId: string | null): string {
+  return variantId ? `${productId}:${variantId}` : productId;
+}
+
+function formatVariantLabel(variant: ProductVariantRead): string {
+  return Object.values(variant.attributes).join(" / ") || variant.sku || "Variante";
+}
 
 export function SaleForm() {
   const queryClient = useQueryClient();
@@ -25,6 +34,7 @@ export function SaleForm() {
   const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS[0]);
   const [productSearch, setProductSearch] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [selectedVariantByProduct, setSelectedVariantByProduct] = useState<Record<string, string>>({});
 
   const filteredProducts = useMemo(() => {
     const products = productsQuery.data ?? [];
@@ -43,27 +53,33 @@ export function SaleForm() {
     [cart],
   );
 
-  function addToCart(product: ProductRead) {
+  function addToCart(product: ProductRead, variant: ProductVariantRead | null) {
+    const key = lineKey(product.id, variant?.id ?? null);
+    const maxStock = variant ? variant.stock : product.current_stock;
     setCart((prev) => {
-      const existing = prev.find((line) => line.product.id === product.id);
+      const existing = prev.find((line) => lineKey(line.product.id, line.variant?.id ?? null) === key);
       if (existing) {
-        const nextQuantity = Math.min(existing.quantity + 1, product.current_stock);
+        const nextQuantity = Math.min(existing.quantity + 1, maxStock);
         return prev.map((line) =>
-          line.product.id === product.id ? { ...line, quantity: nextQuantity } : line,
+          lineKey(line.product.id, line.variant?.id ?? null) === key ? { ...line, quantity: nextQuantity } : line,
         );
       }
-      return [...prev, { product, quantity: 1 }];
+      return [...prev, { product, variant, quantity: 1 }];
     });
   }
 
-  function updateQuantity(productId: string, quantity: number) {
+  function updateQuantity(productId: string, variantId: string | null, quantity: number) {
+    const key = lineKey(productId, variantId);
     setCart((prev) =>
-      prev.map((line) => (line.product.id === productId ? { ...line, quantity } : line)),
+      prev.map((line) =>
+        lineKey(line.product.id, line.variant?.id ?? null) === key ? { ...line, quantity } : line,
+      ),
     );
   }
 
-  function removeFromCart(productId: string) {
-    setCart((prev) => prev.filter((line) => line.product.id !== productId));
+  function removeFromCart(productId: string, variantId: string | null) {
+    const key = lineKey(productId, variantId);
+    setCart((prev) => prev.filter((line) => lineKey(line.product.id, line.variant?.id ?? null) !== key));
   }
 
   const saleMutation = useMutation({
@@ -71,7 +87,11 @@ export function SaleForm() {
       createSale({
         customer_id: customerId,
         payment_method: paymentMethod,
-        items: cart.map((line) => ({ product_id: line.product.id, quantity: line.quantity })),
+        items: cart.map((line) => ({
+          product_id: line.product.id,
+          variant_id: line.variant?.id ?? null,
+          quantity: line.quantity,
+        })),
       }),
     onSuccess: () => {
       setCart([]);
@@ -135,24 +155,50 @@ export function SaleForm() {
         />
         {productsQuery.isLoading && <p className="text-sm text-neutral-500">Cargando productos...</p>}
         <ul className="flex max-h-56 flex-col divide-y divide-neutral-100 overflow-y-auto rounded-lg border border-neutral-200">
-          {filteredProducts.map((product) => (
-            <li
-              key={product.id}
-              className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-            >
-              <span>
-                {product.name} — ${product.price.toFixed(2)} (stock: {product.current_stock})
-              </span>
-              <button
-                type="button"
-                onClick={() => addToCart(product)}
-                disabled={product.current_stock <= 0}
-                className="aura-btn-secondary px-3 py-1"
+          {filteredProducts.map((product) => {
+            const hasVariants = product.variants.length > 0;
+            const selectedVariantId = selectedVariantByProduct[product.id] ?? "";
+            const selectedVariant = hasVariants
+              ? (product.variants.find((v) => v.id === selectedVariantId) ?? null)
+              : null;
+            return (
+              <li
+                key={product.id}
+                className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 text-sm"
               >
-                Agregar
-              </button>
-            </li>
-          ))}
+                <span>
+                  {product.name} — ${product.price.toFixed(2)}
+                  {!hasVariants && ` (stock: ${product.current_stock})`}
+                </span>
+                <span className="flex items-center gap-2">
+                  {hasVariants && (
+                    <select
+                      value={selectedVariantId}
+                      onChange={(e) =>
+                        setSelectedVariantByProduct((prev) => ({ ...prev, [product.id]: e.target.value }))
+                      }
+                      className="aura-select"
+                    >
+                      <option value="">Elegí variante...</option>
+                      {product.variants.map((variant) => (
+                        <option key={variant.id} value={variant.id}>
+                          {formatVariantLabel(variant)} (stock: {variant.stock})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => addToCart(product, selectedVariant)}
+                    disabled={hasVariants ? !selectedVariant || selectedVariant.stock <= 0 : product.current_stock <= 0}
+                    className="aura-btn-secondary px-3 py-1"
+                  >
+                    Agregar
+                  </button>
+                </span>
+              </li>
+            );
+          })}
           {productsQuery.data && filteredProducts.length === 0 && (
             <li className="px-3 py-2 text-sm text-neutral-400">Sin resultados.</li>
           )}
@@ -163,33 +209,41 @@ export function SaleForm() {
         <h3>Carrito</h3>
         {cart.length === 0 && <p className="text-sm text-neutral-500">Sin productos agregados.</p>}
         <ul className="flex flex-col divide-y divide-neutral-100">
-          {cart.map((line) => (
-            <li
-              key={line.product.id}
-              className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
-            >
-              <span className="flex items-center gap-2">
-                {line.product.name}
-                <input
-                  type="number"
-                  min={1}
-                  max={line.product.current_stock}
-                  value={line.quantity}
-                  onChange={(e) => updateQuantity(line.product.id, Number(e.target.value))}
-                  className="aura-input w-16 px-2 py-1"
-                />
-                x ${line.product.price.toFixed(2)} = $
-                {(line.product.price * line.quantity).toFixed(2)}
-              </span>
-              <button
-                type="button"
-                onClick={() => removeFromCart(line.product.id)}
-                className="aura-btn-danger px-3 py-1"
+          {cart.map((line) => {
+            const maxStock = line.variant ? line.variant.stock : line.product.current_stock;
+            return (
+              <li
+                key={lineKey(line.product.id, line.variant?.id ?? null)}
+                className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
               >
-                Quitar
-              </button>
-            </li>
-          ))}
+                <span className="flex items-center gap-2">
+                  {line.product.name}
+                  {line.variant && (
+                    <span className="text-neutral-500">({formatVariantLabel(line.variant)})</span>
+                  )}
+                  <input
+                    type="number"
+                    min={1}
+                    max={maxStock}
+                    value={line.quantity}
+                    onChange={(e) =>
+                      updateQuantity(line.product.id, line.variant?.id ?? null, Number(e.target.value))
+                    }
+                    className="aura-input w-16 px-2 py-1"
+                  />
+                  x ${line.product.price.toFixed(2)} = $
+                  {(line.product.price * line.quantity).toFixed(2)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeFromCart(line.product.id, line.variant?.id ?? null)}
+                  className="aura-btn-danger px-3 py-1"
+                >
+                  Quitar
+                </button>
+              </li>
+            );
+          })}
         </ul>
         <p className="text-right">
           <strong>Total estimado: ${estimatedTotal.toFixed(2)}</strong>

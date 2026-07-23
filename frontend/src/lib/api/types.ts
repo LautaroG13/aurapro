@@ -202,6 +202,7 @@ export interface CustomerUpdate {
  */
 export interface SaleItemCreate {
   product_id: string;
+  variant_id?: string | null;
   quantity: number;
 }
 
@@ -223,6 +224,7 @@ export interface SaleCreate {
 export interface SaleItemRead {
   id: string;
   product_id: string;
+  variant_id: string | null;
   quantity: number;
   unit_price: number;
 }
