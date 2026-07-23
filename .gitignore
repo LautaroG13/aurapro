@@ -34,3 +34,4 @@ infra/docker/**/data/
 
 # Logs
 *.log
+.agents/ 
