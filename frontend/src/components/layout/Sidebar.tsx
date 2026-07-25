@@ -6,9 +6,10 @@ import { NavLink } from "./NavLink";
 
 interface SidebarProps {
   isSuperadmin: boolean;
+  isAdmin: boolean;
 }
 
-export function Sidebar({ isSuperadmin }: SidebarProps) {
+export function Sidebar({ isSuperadmin, isAdmin }: SidebarProps) {
   return (
     <aside className="flex h-full w-60 shrink-0 flex-col border-r border-neutral-200 bg-white">
       <div className="px-4 py-5">
@@ -20,6 +21,7 @@ export function Sidebar({ isSuperadmin }: SidebarProps) {
         <NavLink href="/sales">Ventas</NavLink>
         <NavLink href="/products">Productos</NavLink>
         <NavLink href="/customers">Clientes</NavLink>
+        {isAdmin && <NavLink href="/team">Equipo</NavLink>}
         {isSuperadmin && <NavLink href="/admin">Admin</NavLink>}
       </nav>
 

@@ -155,6 +155,47 @@ export interface SalespersonRead {
 }
 
 /**
+ * Espeja backend/app/modules/identity/schemas.py::UserRead.
+ */
+export interface UserRead {
+  id: string;
+  tenant_id: string;
+  email: string;
+  role: "ADMIN" | "VENDEDOR" | "VIEWER";
+  is_superadmin: boolean;
+  created_at: string;
+}
+
+/**
+ * Espeja backend/app/modules/identity/schemas.py::InvitationCreate.
+ */
+export interface InvitationCreate {
+  email: string;
+  role: "ADMIN" | "VENDEDOR" | "VIEWER";
+}
+
+/**
+ * Espeja backend/app/modules/identity/schemas.py::InvitationRead.
+ */
+export interface InvitationRead {
+  id: string;
+  email: string;
+  role: "ADMIN" | "VENDEDOR" | "VIEWER";
+  created_at: string;
+  expires_at: string;
+  accepted_at: string | null;
+}
+
+/**
+ * Espeja backend/app/modules/identity/schemas.py::InvitationPreview.
+ */
+export interface InvitationPreview {
+  tenant_name: string;
+  email: string;
+  role: "ADMIN" | "VENDEDOR" | "VIEWER";
+}
+
+/**
  * Espeja backend/app/modules/customers/schemas.py::CustomerRead.
  */
 export interface CustomerRead {

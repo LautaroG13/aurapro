@@ -2,17 +2,36 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
+from app.core.email import EmailNotConfiguredError, EmailSendError, send_email
 from app.db.async_session import get_async_db
 from app.db.tenant_session import get_tenant_db
 from app.modules.identity.dependencies import CurrentUser, get_current_user, require_role
-from app.modules.identity.models import User, UserRole
-from app.modules.identity.schemas import SalespersonRead, TenantRegister, TokenResponse, UserLogin, UserRead
+from app.modules.identity.models import Tenant, User, UserRole
+from app.modules.identity.schemas import (
+    InvitationAccept,
+    InvitationCreate,
+    InvitationPreview,
+    InvitationRead,
+    SalespersonRead,
+    TenantRegister,
+    TokenResponse,
+    UserLogin,
+    UserRead,
+)
 from app.modules.identity.services import (
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
+    InvitationAlreadyAcceptedError,
+    InvitationExpiredError,
+    InvitationNotFoundError,
     TenantSuspendedError,
+    accept_invitation,
     authenticate_user,
+    create_invitation,
+    get_invitation_preview,
     issue_token_for_user,
+    list_invitations,
     list_salespeople,
     register_tenant,
 )
@@ -76,3 +95,75 @@ async def list_salespeople_endpoint(
 ) -> list[SalespersonRead]:
     salespeople = await list_salespeople(db)
     return [SalespersonRead.model_validate(s) for s in salespeople]
+
+
+@router.post("/invitations", response_model=InvitationRead, status_code=201)
+async def invite_user(
+    payload: InvitationCreate,
+    current_user: CurrentUser = Depends(require_role(UserRole.ADMIN.value)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> InvitationRead:
+    try:
+        invitation = await create_invitation(
+            db, current_user.tenant_id, current_user.user_id, payload.email, payload.role
+        )
+    except EmailAlreadyRegisteredError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    tenant = tenant_result.scalar_one()
+    invite_link = f"{settings.frontend_url}/invite/{invitation.token}"
+    try:
+        await send_email(
+            to=invitation.email,
+            subject=f"Te invitaron a {tenant.name} en AuraPro",
+            html=(
+                f"<p>Te invitaron a sumarte a <strong>{tenant.name}</strong> en AuraPro "
+                f"como {invitation.role.value}.</p>"
+                f'<p><a href="{invite_link}">Aceptar invitación</a></p>'
+                "<p>Este link expira en 7 días.</p>"
+            ),
+        )
+    except EmailNotConfiguredError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except EmailSendError as exc:
+        raise HTTPException(status_code=502, detail=f"No se pudo enviar el email de invitación: {exc}") from exc
+
+    return InvitationRead.model_validate(invitation)
+
+
+@router.get("/invitations", response_model=list[InvitationRead])
+async def list_invitations_endpoint(
+    _current_user: CurrentUser = Depends(require_role(UserRole.ADMIN.value)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> list[InvitationRead]:
+    invitations = await list_invitations(db)
+    return [InvitationRead.model_validate(i) for i in invitations]
+
+
+@router.get("/invitations/{token}", response_model=InvitationPreview)
+async def preview_invitation(token: str, db: AsyncSession = Depends(get_async_db)) -> InvitationPreview:
+    try:
+        invitation, tenant = await get_invitation_preview(db, token)
+    except InvitationNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (InvitationExpiredError, InvitationAlreadyAcceptedError) as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+
+    return InvitationPreview(tenant_name=tenant.name, email=invitation.email, role=invitation.role)
+
+
+@router.post("/invitations/{token}/accept", response_model=TokenResponse, status_code=201)
+async def accept_invitation_endpoint(
+    token: str, payload: InvitationAccept, db: AsyncSession = Depends(get_async_db)
+) -> TokenResponse:
+    try:
+        user = await accept_invitation(db, token, payload.password)
+    except InvitationNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (InvitationExpiredError, InvitationAlreadyAcceptedError) as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+    except EmailAlreadyRegisteredError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    return TokenResponse(access_token=issue_token_for_user(user))

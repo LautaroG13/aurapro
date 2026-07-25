@@ -50,7 +50,7 @@ function VariantAttributesEditor({
   const [stock, setStock] = useState(String(initialStock));
 
   return (
-    <div className="flex flex-col gap-2 rounded border border-neutral-700 p-3">
+    <div className="flex flex-col gap-2 rounded border border-neutral-200 p-3">
       {pairs.map((pair, index) => (
         <div key={index} className="flex gap-2">
           <input
@@ -205,8 +205,8 @@ function VariantCombinationGenerator({
 
   if (rows === null) {
     return (
-      <div className="flex flex-col gap-3 rounded border border-neutral-700 p-3">
-        <p className="text-sm text-neutral-400">
+      <div className="flex flex-col gap-3 rounded border border-neutral-200 p-3">
+        <p className="text-sm text-neutral-500">
           Definí uno o más atributos con sus valores posibles (separados por coma). Se generará una
           variante por cada combinación.
         </p>
@@ -266,11 +266,11 @@ function VariantCombinationGenerator({
   const attributeNames = parsedAxes.map((axis) => axis.name);
 
   return (
-    <div className="flex flex-col gap-3 rounded border border-neutral-700 p-3">
+    <div className="flex flex-col gap-3 rounded border border-neutral-200 p-3">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-neutral-400">
+            <tr className="text-left text-neutral-500">
               {attributeNames.map((name) => (
                 <th key={name} className="px-2 py-1">
                   {name}
@@ -282,7 +282,7 @@ function VariantCombinationGenerator({
           </thead>
           <tbody>
             {rows.map((row, index) => (
-              <tr key={index} className="border-t border-neutral-800">
+              <tr key={index} className="border-t border-neutral-100">
                 {attributeNames.map((name) => (
                   <td key={name} className="px-2 py-1">
                     {row.attributes[name]}
@@ -404,7 +404,7 @@ export function ProductVariants({ product }: ProductVariantsProps) {
   });
 
   return (
-    <div className="flex flex-col gap-3 border-t border-neutral-700 pt-4">
+    <div className="flex flex-col gap-3 border-t border-neutral-200 pt-4">
       <h3>Variantes</h3>
 
       {liveProduct.variants.length === 0 && addMode === "none" && (
