@@ -99,6 +99,41 @@ export interface ProductRead {
 }
 
 /**
+ * Espeja backend/app/modules/products/schemas.py::ProductAttributeValueRead.
+ */
+export interface ProductAttributeValueRead {
+  id: string;
+  attribute_id: string;
+  value: string;
+  created_at: string;
+}
+
+/**
+ * Espeja backend/app/modules/products/schemas.py::ProductAttributeValueCreate.
+ */
+export interface ProductAttributeValueCreate {
+  value: string;
+}
+
+/**
+ * Espeja backend/app/modules/products/schemas.py::ProductAttributeRead.
+ */
+export interface ProductAttributeRead {
+  id: string;
+  tenant_id: string;
+  name: string;
+  created_at: string;
+  values: ProductAttributeValueRead[];
+}
+
+/**
+ * Espeja backend/app/modules/products/schemas.py::ProductAttributeCreate.
+ */
+export interface ProductAttributeCreate {
+  name: string;
+}
+
+/**
  * Espeja backend/app/modules/products/schemas.py::ProductCreate.
  */
 export interface ProductCreate {

@@ -1,5 +1,9 @@
 import { apiFetch } from "./client";
 import type {
+  ProductAttributeCreate,
+  ProductAttributeRead,
+  ProductAttributeValueCreate,
+  ProductAttributeValueRead,
   ProductCreate,
   ProductRead,
   ProductUpdate,
@@ -11,6 +15,37 @@ import type {
 
 export async function listProducts(): Promise<ProductRead[]> {
   return apiFetch<ProductRead[]>("/api/v1/products");
+}
+
+export async function listAttributes(): Promise<ProductAttributeRead[]> {
+  return apiFetch<ProductAttributeRead[]>("/api/v1/products/attributes");
+}
+
+export async function createAttribute(payload: ProductAttributeCreate): Promise<ProductAttributeRead> {
+  return apiFetch<ProductAttributeRead>("/api/v1/products/attributes", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAttribute(attributeId: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/products/attributes/${attributeId}`, { method: "DELETE" });
+}
+
+export async function createAttributeValue(
+  attributeId: string,
+  payload: ProductAttributeValueCreate
+): Promise<ProductAttributeValueRead> {
+  return apiFetch<ProductAttributeValueRead>(`/api/v1/products/attributes/${attributeId}/values`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAttributeValue(attributeId: string, valueId: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/products/attributes/${attributeId}/values/${valueId}`, {
+    method: "DELETE",
+  });
 }
 
 export async function createProduct(payload: ProductCreate): Promise<ProductRead> {

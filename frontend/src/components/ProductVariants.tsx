@@ -4,31 +4,289 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import {
+  createAttribute,
+  createAttributeValue,
   createVariant,
   createVariantsBulk,
   deleteVariant,
+  listAttributes,
   listProducts,
   updateVariant,
 } from "@/lib/api/products";
-import type { ProductRead, ProductVariantCreate, ProductVariantRead } from "@/lib/api/types";
+import type {
+  ProductAttributeRead,
+  ProductRead,
+  ProductVariantCreate,
+  ProductVariantRead,
+} from "@/lib/api/types";
 
-interface AttributePair {
+function AttributeChip({
+  label,
+  isSelected,
+  onClick,
+}: {
+  label: string;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        isSelected
+          ? "rounded-full bg-neutral-900 px-3 py-1 text-xs font-medium text-white"
+          : "rounded-full border border-neutral-300 px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+      }
+    >
+      {label}
+    </button>
+  );
+}
+
+interface AttributeNameSelectorProps {
+  attributes: ProductAttributeRead[];
+  selectedAttributeId: string | null;
+  onSelect: (attributeId: string) => void;
+  // Precarga el input de "crear" con este texto -- se usa al editar una
+  // variante cuyo nombre de atributo no está (todavía) en el catálogo,
+  // para no perder el dato: un click en "OK" lo da de alta tal cual.
+  initialCreateName?: string;
+}
+
+function AttributeNameSelector({
+  attributes,
+  selectedAttributeId,
+  onSelect,
+  initialCreateName,
+}: AttributeNameSelectorProps) {
+  const queryClient = useQueryClient();
+  const [isCreating, setIsCreating] = useState(Boolean(initialCreateName));
+  const [newName, setNewName] = useState(initialCreateName ?? "");
+
+  const createMutation = useMutation({
+    mutationFn: () => createAttribute({ name: newName.trim() }),
+    onSuccess: (attribute) => {
+      queryClient.invalidateQueries({ queryKey: ["productAttributes"] });
+      onSelect(attribute.id);
+      setIsCreating(false);
+    },
+  });
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {attributes.map((attribute) => (
+        <AttributeChip
+          key={attribute.id}
+          label={attribute.name}
+          isSelected={selectedAttributeId === attribute.id}
+          onClick={() => onSelect(attribute.id)}
+        />
+      ))}
+      {isCreating ? (
+        <span className="flex items-center gap-1">
+          <input
+            autoFocus
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Nombre (ej. Color)"
+            className="aura-input w-32 py-1 text-xs"
+          />
+          <button
+            type="button"
+            disabled={createMutation.isPending || newName.trim() === ""}
+            onClick={() => createMutation.mutate()}
+            className="aura-btn-primary px-2 py-1 text-xs"
+          >
+            OK
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsCreating(true)}
+          className="aura-btn-secondary px-2 py-1 text-xs"
+        >
+          + Nuevo atributo
+        </button>
+      )}
+      {createMutation.isError && (
+        <span className="text-xs text-red-600">{(createMutation.error as Error).message}</span>
+      )}
+    </div>
+  );
+}
+
+interface AttributeValueChipsProps {
+  attribute: ProductAttributeRead;
+  isValueSelected: (valueId: string) => boolean;
+  onToggleValue: (valueId: string) => void;
+  initialCreateValue?: string;
+}
+
+function AttributeValueChips({
+  attribute,
+  isValueSelected,
+  onToggleValue,
+  initialCreateValue,
+}: AttributeValueChipsProps) {
+  const queryClient = useQueryClient();
+  const [isCreating, setIsCreating] = useState(Boolean(initialCreateValue));
+  const [newValue, setNewValue] = useState(initialCreateValue ?? "");
+
+  const createMutation = useMutation({
+    mutationFn: () => createAttributeValue(attribute.id, { value: newValue.trim() }),
+    onSuccess: (value) => {
+      queryClient.invalidateQueries({ queryKey: ["productAttributes"] });
+      onToggleValue(value.id);
+      setIsCreating(false);
+    },
+  });
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {attribute.values.map((value) => (
+        <AttributeChip
+          key={value.id}
+          label={value.value}
+          isSelected={isValueSelected(value.id)}
+          onClick={() => onToggleValue(value.id)}
+        />
+      ))}
+      {isCreating ? (
+        <span className="flex items-center gap-1">
+          <input
+            autoFocus
+            value={newValue}
+            onChange={(e) => setNewValue(e.target.value)}
+            placeholder="Valor (ej. Rojo)"
+            className="aura-input w-28 py-1 text-xs"
+          />
+          <button
+            type="button"
+            disabled={createMutation.isPending || newValue.trim() === ""}
+            onClick={() => createMutation.mutate()}
+            className="aura-btn-primary px-2 py-1 text-xs"
+          >
+            OK
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsCreating(true)}
+          className="aura-btn-secondary px-2 py-1 text-xs"
+        >
+          + Valor
+        </button>
+      )}
+      {createMutation.isError && (
+        <span className="text-xs text-red-600">{(createMutation.error as Error).message}</span>
+      )}
+    </div>
+  );
+}
+
+// --- Alta / edición de UNA variante: un valor por atributo ---
+
+interface SingleRowState {
   key: string;
-  value: string;
+  attributeId: string | null;
+  valueId: string | null;
+  // Fallback para datos existentes cuyo nombre/valor no matchea ningún
+  // atributo del catálogo (ej. variante creada antes de que existiera
+  // esta biblioteca) -- así nunca se pierde el dato al editar.
+  rawName: string;
+  rawValue: string;
 }
 
-function attributesToPairs(attributes: Record<string, string>): AttributePair[] {
-  const pairs = Object.entries(attributes).map(([key, value]) => ({ key, value }));
-  return pairs.length > 0 ? pairs : [{ key: "", value: "" }];
+function newSingleRow(): SingleRowState {
+  return { key: crypto.randomUUID(), attributeId: null, valueId: null, rawName: "", rawValue: "" };
 }
 
-function pairsToAttributes(pairs: AttributePair[]): Record<string, string> {
+function resolveSingleRow(
+  row: SingleRowState,
+  attributes: ProductAttributeRead[]
+): { name: string; value: string } {
+  const attribute = row.attributeId ? attributes.find((a) => a.id === row.attributeId) : undefined;
+  const value = row.valueId ? attribute?.values.find((v) => v.id === row.valueId) : undefined;
+  return { name: (attribute?.name ?? row.rawName).trim(), value: value?.value ?? row.rawValue };
+}
+
+function rowsToAttributes(
+  rows: SingleRowState[],
+  attributes: ProductAttributeRead[]
+): Record<string, string> {
   return Object.fromEntries(
-    pairs.filter((pair) => pair.key.trim() !== "").map((pair) => [pair.key.trim(), pair.value])
+    rows
+      .map((row) => resolveSingleRow(row, attributes))
+      .filter((entry) => entry.name !== "")
+      .map((entry) => [entry.name, entry.value])
+  );
+}
+
+function initialSingleRows(
+  initialAttributes: Record<string, string>,
+  attributes: ProductAttributeRead[]
+): SingleRowState[] {
+  const entries = Object.entries(initialAttributes);
+  if (entries.length === 0) return [newSingleRow()];
+  return entries.map(([name, value]) => {
+    const attribute = attributes.find((a) => a.name.toLowerCase() === name.toLowerCase());
+    const matchedValue = attribute?.values.find((v) => v.value.toLowerCase() === value.toLowerCase());
+    return {
+      key: crypto.randomUUID(),
+      attributeId: attribute?.id ?? null,
+      valueId: matchedValue?.id ?? null,
+      rawName: name,
+      rawValue: value,
+    };
+  });
+}
+
+interface SingleAttributeRowProps {
+  row: SingleRowState;
+  attributes: ProductAttributeRead[];
+  onChange: (row: SingleRowState) => void;
+  onRemove: () => void;
+  canRemove: boolean;
+}
+
+function SingleAttributeRow({ row, attributes, onChange, onRemove, canRemove }: SingleAttributeRowProps) {
+  const selectedAttribute = attributes.find((a) => a.id === row.attributeId);
+
+  return (
+    <div className="flex flex-col gap-2 rounded border border-neutral-100 p-2">
+      <div className="flex items-start justify-between gap-2">
+        <AttributeNameSelector
+          attributes={attributes}
+          selectedAttributeId={row.attributeId}
+          onSelect={(attributeId) => onChange({ ...row, attributeId, valueId: null, rawName: "" })}
+          initialCreateName={row.attributeId ? undefined : row.rawName}
+        />
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={!canRemove}
+          className="aura-btn-secondary shrink-0 px-2"
+        >
+          -
+        </button>
+      </div>
+      {selectedAttribute && (
+        <AttributeValueChips
+          attribute={selectedAttribute}
+          isValueSelected={(valueId) => row.valueId === valueId}
+          onToggleValue={(valueId) => onChange({ ...row, valueId, rawValue: "" })}
+          initialCreateValue={row.valueId ? undefined : row.rawValue}
+        />
+      )}
+    </div>
   );
 }
 
 interface VariantAttributesEditorProps {
+  attributes: ProductAttributeRead[];
   initialAttributes: Record<string, string>;
   initialSku: string | null;
   initialStock: number;
@@ -38,6 +296,7 @@ interface VariantAttributesEditorProps {
 }
 
 function VariantAttributesEditor({
+  attributes,
   initialAttributes,
   initialSku,
   initialStock,
@@ -45,43 +304,25 @@ function VariantAttributesEditor({
   onSave,
   onCancel,
 }: VariantAttributesEditorProps) {
-  const [pairs, setPairs] = useState<AttributePair[]>(attributesToPairs(initialAttributes));
+  const [rows, setRows] = useState<SingleRowState[]>(() => initialSingleRows(initialAttributes, attributes));
   const [sku, setSku] = useState(initialSku ?? "");
   const [stock, setStock] = useState(String(initialStock));
 
   return (
     <div className="flex flex-col gap-2 rounded border border-neutral-200 p-3">
-      {pairs.map((pair, index) => (
-        <div key={index} className="flex gap-2">
-          <input
-            value={pair.key}
-            onChange={(e) =>
-              setPairs(pairs.map((p, i) => (i === index ? { ...p, key: e.target.value } : p)))
-            }
-            placeholder="Atributo (ej. color)"
-            className="aura-input"
-          />
-          <input
-            value={pair.value}
-            onChange={(e) =>
-              setPairs(pairs.map((p, i) => (i === index ? { ...p, value: e.target.value } : p)))
-            }
-            placeholder="Valor (ej. rojo)"
-            className="aura-input"
-          />
-          <button
-            type="button"
-            onClick={() => setPairs(pairs.filter((_, i) => i !== index))}
-            disabled={pairs.length === 1}
-            className="aura-btn-secondary px-2"
-          >
-            -
-          </button>
-        </div>
+      {rows.map((row, index) => (
+        <SingleAttributeRow
+          key={row.key}
+          row={row}
+          attributes={attributes}
+          onChange={(updated) => setRows(rows.map((r, i) => (i === index ? updated : r)))}
+          onRemove={() => setRows(rows.filter((_, i) => i !== index))}
+          canRemove={rows.length > 1}
+        />
       ))}
       <button
         type="button"
-        onClick={() => setPairs([...pairs, { key: "", value: "" }])}
+        onClick={() => setRows([...rows, newSingleRow()])}
         className="aura-btn-secondary self-start px-2"
       >
         + Atributo
@@ -109,7 +350,7 @@ function VariantAttributesEditor({
           type="button"
           disabled={isSaving}
           onClick={() =>
-            onSave(pairsToAttributes(pairs), sku.trim() === "" ? null : sku.trim(), Number(stock))
+            onSave(rowsToAttributes(rows, attributes), sku.trim() === "" ? null : sku.trim(), Number(stock))
           }
           className="aura-btn-primary px-3 py-1"
         >
@@ -129,9 +370,86 @@ function formatAttributes(attributes: Record<string, string>): string {
   return entries.map(([key, value]) => `${key}: ${value}`).join(", ");
 }
 
-interface AttributeAxis {
+// --- Generador de combinaciones: varios valores por atributo ---
+
+interface MultiRowState {
+  key: string;
+  attributeId: string | null;
+  valueIds: string[];
+}
+
+function newMultiRow(): MultiRowState {
+  return { key: crypto.randomUUID(), attributeId: null, valueIds: [] };
+}
+
+interface ParsedAxis {
   name: string;
-  valuesRaw: string;
+  values: string[];
+}
+
+function resolveMultiRows(rows: MultiRowState[], attributes: ProductAttributeRead[]): ParsedAxis[] {
+  return rows
+    .map((row) => {
+      const attribute = attributes.find((a) => a.id === row.attributeId);
+      if (!attribute) return null;
+      const values = row.valueIds
+        .map((valueId) => attribute.values.find((v) => v.id === valueId)?.value)
+        .filter((v): v is string => Boolean(v));
+      return { name: attribute.name, values };
+    })
+    .filter((axis): axis is ParsedAxis => axis !== null && axis.values.length > 0);
+}
+
+interface MultiValueAttributeRowProps {
+  row: MultiRowState;
+  attributes: ProductAttributeRead[];
+  onChange: (row: MultiRowState) => void;
+  onRemove: () => void;
+  canRemove: boolean;
+}
+
+function MultiValueAttributeRow({
+  row,
+  attributes,
+  onChange,
+  onRemove,
+  canRemove,
+}: MultiValueAttributeRowProps) {
+  const selectedAttribute = attributes.find((a) => a.id === row.attributeId);
+
+  return (
+    <div className="flex flex-col gap-2 rounded border border-neutral-100 p-2">
+      <div className="flex items-start justify-between gap-2">
+        <AttributeNameSelector
+          attributes={attributes}
+          selectedAttributeId={row.attributeId}
+          onSelect={(attributeId) => onChange({ ...row, attributeId, valueIds: [] })}
+        />
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={!canRemove}
+          className="aura-btn-secondary shrink-0 px-2"
+        >
+          -
+        </button>
+      </div>
+      {selectedAttribute && (
+        <AttributeValueChips
+          attribute={selectedAttribute}
+          isValueSelected={(valueId) => row.valueIds.includes(valueId)}
+          onToggleValue={(valueId) =>
+            onChange({
+              ...row,
+              valueIds: row.valueIds.includes(valueId)
+                ? row.valueIds.filter((id) => id !== valueId)
+                : [...row.valueIds, valueId],
+            })
+          }
+        />
+      )}
+    </div>
+  );
 }
 
 interface GeneratedRow {
@@ -140,7 +458,7 @@ interface GeneratedRow {
   stock: string;
 }
 
-function cartesianProduct(axes: { name: string; values: string[] }[]): Record<string, string>[] {
+function cartesianProduct(axes: ParsedAxis[]): Record<string, string>[] {
   return axes.reduce<Record<string, string>[]>(
     (combos, axis) => combos.flatMap((combo) => axis.values.map((value) => ({ ...combo, [axis.name]: value }))),
     [{}]
@@ -153,7 +471,7 @@ function cartesianProduct(axes: { name: string; values: string[] }[]): Record<st
 function skuPart(value: string): string {
   return value
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, "");
 }
@@ -167,6 +485,7 @@ function buildAutoSku(productSku: string | null, attributes: Record<string, stri
 }
 
 interface VariantCombinationGeneratorProps {
+  attributes: ProductAttributeRead[];
   productSku: string | null;
   isSaving: boolean;
   onCreate: (variants: ProductVariantCreate[]) => void;
@@ -174,30 +493,23 @@ interface VariantCombinationGeneratorProps {
 }
 
 function VariantCombinationGenerator({
+  attributes,
   productSku,
   isSaving,
   onCreate,
   onCancel,
 }: VariantCombinationGeneratorProps) {
-  const [axes, setAxes] = useState<AttributeAxis[]>([{ name: "", valuesRaw: "" }]);
+  const [axisRows, setAxisRows] = useState<MultiRowState[]>([newMultiRow()]);
   const [rows, setRows] = useState<GeneratedRow[] | null>(null);
 
-  const parsedAxes = axes
-    .map((axis) => ({
-      name: axis.name.trim(),
-      values: axis.valuesRaw
-        .split(",")
-        .map((v) => v.trim())
-        .filter((v) => v !== ""),
-    }))
-    .filter((axis) => axis.name !== "" && axis.values.length > 0);
+  const parsedAxes = resolveMultiRows(axisRows, attributes);
 
   const handleGenerate = () => {
     const combos = cartesianProduct(parsedAxes);
     setRows(
-      combos.map((attributes) => ({
-        attributes,
-        sku: buildAutoSku(productSku, attributes),
+      combos.map((combo) => ({
+        attributes: combo,
+        sku: buildAutoSku(productSku, combo),
         stock: "0",
       }))
     );
@@ -207,40 +519,22 @@ function VariantCombinationGenerator({
     return (
       <div className="flex flex-col gap-3 rounded border border-neutral-200 p-3">
         <p className="text-sm text-neutral-500">
-          Definí uno o más atributos con sus valores posibles (separados por coma). Se generará una
-          variante por cada combinación.
+          Elegí uno o más atributos y tildá sus valores posibles (o agregá uno nuevo al vuelo). Se
+          generará una variante por cada combinación.
         </p>
-        {axes.map((axis, index) => (
-          <div key={index} className="flex gap-2">
-            <input
-              value={axis.name}
-              onChange={(e) =>
-                setAxes(axes.map((a, i) => (i === index ? { ...a, name: e.target.value } : a)))
-              }
-              placeholder="Atributo (ej. Color)"
-              className="aura-input"
-            />
-            <input
-              value={axis.valuesRaw}
-              onChange={(e) =>
-                setAxes(axes.map((a, i) => (i === index ? { ...a, valuesRaw: e.target.value } : a)))
-              }
-              placeholder="Valores (ej. Negro, Blanco, Gris)"
-              className="aura-input flex-1"
-            />
-            <button
-              type="button"
-              onClick={() => setAxes(axes.filter((_, i) => i !== index))}
-              disabled={axes.length === 1}
-              className="aura-btn-secondary px-2"
-            >
-              -
-            </button>
-          </div>
+        {axisRows.map((row, index) => (
+          <MultiValueAttributeRow
+            key={row.key}
+            row={row}
+            attributes={attributes}
+            onChange={(updated) => setAxisRows(axisRows.map((r, i) => (i === index ? updated : r)))}
+            onRemove={() => setAxisRows(axisRows.filter((_, i) => i !== index))}
+            canRemove={axisRows.length > 1}
+          />
         ))}
         <button
           type="button"
-          onClick={() => setAxes([...axes, { name: "", valuesRaw: "" }])}
+          onClick={() => setAxisRows([...axisRows, newMultiRow()])}
           className="aura-btn-secondary self-start px-2"
         >
           + Atributo
@@ -361,6 +655,9 @@ export function ProductVariants({ product }: ProductVariantsProps) {
   const productsQuery = useQuery({ queryKey: ["products"], queryFn: listProducts });
   const liveProduct = productsQuery.data?.find((p) => p.id === product.id) ?? product;
 
+  const attributesQuery = useQuery({ queryKey: ["productAttributes"], queryFn: listAttributes });
+  const attributes = attributesQuery.data ?? [];
+
   const invalidateProducts = () => queryClient.invalidateQueries({ queryKey: ["products"] });
 
   const createMutation = useMutation({
@@ -416,12 +713,13 @@ export function ProductVariants({ product }: ProductVariantsProps) {
           editingVariantId === variant.id ? (
             <li key={variant.id}>
               <VariantAttributesEditor
+                attributes={attributes}
                 initialAttributes={variant.attributes}
                 initialSku={variant.sku}
                 initialStock={variant.stock}
                 isSaving={updateMutation.isPending}
-                onSave={(attributes, sku, stock) =>
-                  updateMutation.mutate({ variantId: variant.id, attributes, sku, stock })
+                onSave={(attrs, sku, stock) =>
+                  updateMutation.mutate({ variantId: variant.id, attributes: attrs, sku, stock })
                 }
                 onCancel={() => setEditingVariantId(null)}
               />
@@ -460,17 +758,19 @@ export function ProductVariants({ product }: ProductVariantsProps) {
 
       {addMode === "single" && (
         <VariantAttributesEditor
+          attributes={attributes}
           initialAttributes={{}}
           initialSku={null}
           initialStock={0}
           isSaving={createMutation.isPending}
-          onSave={(attributes, sku, stock) => createMutation.mutate({ attributes, sku, stock })}
+          onSave={(attrs, sku, stock) => createMutation.mutate({ attributes: attrs, sku, stock })}
           onCancel={() => setAddMode("none")}
         />
       )}
 
       {addMode === "generate" && (
         <VariantCombinationGenerator
+          attributes={attributes}
           productSku={liveProduct.sku}
           isSaving={createBulkMutation.isPending}
           onCreate={(variants) => createBulkMutation.mutate(variants)}

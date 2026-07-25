@@ -43,6 +43,37 @@ class ProductVariantBulkCreate(BaseModel):
     variants: list[ProductVariantCreate] = Field(min_length=1)
 
 
+class ProductAttributeValueCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    value: str = Field(min_length=1)
+
+
+class ProductAttributeValueRead(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    attribute_id: UUID
+    value: str
+    created_at: datetime
+
+
+class ProductAttributeCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1)
+
+
+class ProductAttributeRead(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    tenant_id: UUID
+    name: str
+    created_at: datetime
+    values: list[ProductAttributeValueRead] = []
+
+
 class ProductCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
