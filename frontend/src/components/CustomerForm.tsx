@@ -7,6 +7,8 @@ import { listSalespeople } from "@/lib/api/auth";
 import { createCustomer, createCustomerType, listCustomerTypes, updateCustomer } from "@/lib/api/customers";
 import type { CustomerRead } from "@/lib/api/types";
 
+import { CustomerAccount } from "./CustomerAccount";
+
 interface CustomerFormProps {
   editingCustomer: CustomerRead | null;
   onDone: () => void;
@@ -199,6 +201,8 @@ export function CustomerForm({ editingCustomer, onDone }: CustomerFormProps) {
           {(saveMutation.error as Error).message}
         </p>
       )}
+
+      {editingCustomer && <CustomerAccount customer={editingCustomer} />}
     </form>
   );
 }

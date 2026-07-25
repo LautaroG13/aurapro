@@ -9,6 +9,7 @@ from app.modules.identity.models import UserRole
 from app.modules.sales.schemas import SaleCreate, SaleRead
 from app.modules.sales.services import (
     CustomerNotFoundError,
+    InsufficientCreditError,
     InsufficientStockError,
     ProductNotFoundError,
     ProductVariantNotFoundError,
@@ -41,6 +42,8 @@ async def create_sale_endpoint(
     except VariantProductMismatchError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except InsufficientStockError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except InsufficientCreditError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return SaleRead.model_validate(sale)
 

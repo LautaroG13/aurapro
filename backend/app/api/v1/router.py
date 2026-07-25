@@ -6,6 +6,7 @@ from app.modules.customers.routes import router as customers_router
 from app.modules.identity.routes import router as identity_router
 from app.modules.products.routes import router as products_router
 from app.modules.sales.routes import router as sales_router
+from app.modules.treasury.routes import router as treasury_router
 
 api_router = APIRouter()
 
@@ -16,3 +17,4 @@ api_router.include_router(products_router, prefix="/products", tags=["products"]
 api_router.include_router(customers_router, prefix="/customers", tags=["customers"])
 api_router.include_router(sales_router, prefix="/sales", tags=["sales"])
 api_router.include_router(admin_router, prefix="/admin", tags=["admin"])
+api_router.include_router(treasury_router, prefix="/treasury", tags=["treasury"])

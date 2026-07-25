@@ -14,7 +14,7 @@ interface CartLine {
   quantity: number;
 }
 
-const PAYMENT_METHODS = ["cash", "card", "transfer"] as const;
+const PAYMENT_METHODS = ["cash", "card", "transfer", "account"] as const;
 
 function lineKey(productId: string, variantId: string | null): string {
   return variantId ? `${productId}:${variantId}` : productId;

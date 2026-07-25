@@ -26,11 +26,19 @@ from app.modules.customers.models import Customer
 from app.modules.products.models import Product, ProductVariant
 from app.modules.sales.models import Sale, SaleItem, SaleStatus
 from app.modules.sales.schemas import SaleCreate
+from app.modules.treasury.services import (
+    InsufficientCreditError,
+    record_cash_income_from_sale,
+    record_sale_on_account,
+)
 from app.schemas.sales_event import SalesEvent
 from app.shared.outbox_model import OutboxEvent
 
 SALES_EVENT_TYPE = "VentaRealizada"
 SALES_EVENT_TOPIC = "aurapro.events.venta_realizada"  # ver workers/crates/outbox-processor
+
+ACCOUNT_PAYMENT_METHOD = "account"
+CASH_PAYMENT_METHOD = "cash"
 
 
 class CustomerNotFoundError(Exception):
@@ -141,6 +149,14 @@ async def create_sale(db: AsyncSession, tenant_id: UUID, payload: SaleCreate) ->
     sale.items = sale_items
     db.add(sale)
     await db.flush()  # asigna sale.id sin cerrar la transacción
+
+    # Enganche con tesorería, misma transacción que la venta: si el
+    # crédito no alcanza, InsufficientCreditError se propaga sin
+    # commit() y get_tenant_db hace rollback de todo (venta incluida).
+    if payload.payment_method == ACCOUNT_PAYMENT_METHOD:
+        await record_sale_on_account(db, tenant_id, customer, sale)
+    elif payload.payment_method == CASH_PAYMENT_METHOD:
+        await record_cash_income_from_sale(db, tenant_id, sale)
 
     event = SalesEvent(
         event_id=uuid4(),

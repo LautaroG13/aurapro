@@ -321,6 +321,87 @@ export interface SaleRead {
 }
 
 /**
+ * Espeja backend/app/modules/treasury/schemas.py::AccountMovementRead.
+ */
+export interface AccountMovementRead {
+  id: string;
+  customer_id: string;
+  type: "DEBIT" | "CREDIT";
+  amount: number;
+  description: string | null;
+  sale_id: string | null;
+  created_at: string;
+}
+
+/**
+ * Espeja backend/app/modules/treasury/schemas.py::CustomerAccountRead.
+ */
+export interface CustomerAccountRead {
+  customer_id: string;
+  balance: number;
+  movements: AccountMovementRead[];
+}
+
+/**
+ * Espeja backend/app/modules/treasury/schemas.py::CustomerPaymentCreate.
+ */
+export interface CustomerPaymentCreate {
+  amount: number;
+  payment_method: string;
+  description?: string | null;
+}
+
+/**
+ * Espeja backend/app/modules/treasury/schemas.py::CashMovementRead.
+ */
+export interface CashMovementRead {
+  id: string;
+  cash_session_id: string;
+  type: "INCOME" | "EXPENSE";
+  amount: number;
+  description: string | null;
+  sale_id: string | null;
+  created_at: string;
+}
+
+/**
+ * Espeja backend/app/modules/treasury/schemas.py::CashMovementCreate.
+ */
+export interface CashMovementCreate {
+  type: "INCOME" | "EXPENSE";
+  amount: number;
+  description?: string | null;
+}
+
+/**
+ * Espeja backend/app/modules/treasury/schemas.py::CashSessionRead.
+ */
+export interface CashSessionRead {
+  id: string;
+  opening_amount: number;
+  status: "OPEN" | "CLOSED";
+  closed_at: string | null;
+  closing_amount_declared: number | null;
+  closing_amount_expected: number | null;
+  created_at: string;
+  movements: CashMovementRead[];
+}
+
+/**
+ * Espeja backend/app/modules/treasury/schemas.py::CashSessionOpen.
+ */
+export interface CashSessionOpen {
+  opening_amount: number;
+}
+
+/**
+ * Espeja backend/app/modules/treasury/schemas.py::CashSessionClose.
+ */
+export interface CashSessionClose {
+  closing_amount_declared: number;
+}
+
+/**
  * Espeja backend/app/modules/admin/schemas.py::TenantCreateAdmin.
  */
 export interface TenantCreateAdmin {
