@@ -99,6 +99,41 @@ export interface ProductRead {
 }
 
 /**
+ * Espeja backend/app/modules/products/schemas.py::ProductAttributeValueRead.
+ */
+export interface ProductAttributeValueRead {
+  id: string;
+  attribute_id: string;
+  value: string;
+  created_at: string;
+}
+
+/**
+ * Espeja backend/app/modules/products/schemas.py::ProductAttributeValueCreate.
+ */
+export interface ProductAttributeValueCreate {
+  value: string;
+}
+
+/**
+ * Espeja backend/app/modules/products/schemas.py::ProductAttributeRead.
+ */
+export interface ProductAttributeRead {
+  id: string;
+  tenant_id: string;
+  name: string;
+  created_at: string;
+  values: ProductAttributeValueRead[];
+}
+
+/**
+ * Espeja backend/app/modules/products/schemas.py::ProductAttributeCreate.
+ */
+export interface ProductAttributeCreate {
+  name: string;
+}
+
+/**
  * Espeja backend/app/modules/products/schemas.py::ProductCreate.
  */
 export interface ProductCreate {
@@ -155,6 +190,47 @@ export interface SalespersonRead {
 }
 
 /**
+ * Espeja backend/app/modules/identity/schemas.py::UserRead.
+ */
+export interface UserRead {
+  id: string;
+  tenant_id: string;
+  email: string;
+  role: "ADMIN" | "VENDEDOR" | "VIEWER";
+  is_superadmin: boolean;
+  created_at: string;
+}
+
+/**
+ * Espeja backend/app/modules/identity/schemas.py::InvitationCreate.
+ */
+export interface InvitationCreate {
+  email: string;
+  role: "ADMIN" | "VENDEDOR" | "VIEWER";
+}
+
+/**
+ * Espeja backend/app/modules/identity/schemas.py::InvitationRead.
+ */
+export interface InvitationRead {
+  id: string;
+  email: string;
+  role: "ADMIN" | "VENDEDOR" | "VIEWER";
+  created_at: string;
+  expires_at: string;
+  accepted_at: string | null;
+}
+
+/**
+ * Espeja backend/app/modules/identity/schemas.py::InvitationPreview.
+ */
+export interface InvitationPreview {
+  tenant_name: string;
+  email: string;
+  role: "ADMIN" | "VENDEDOR" | "VIEWER";
+}
+
+/**
  * Espeja backend/app/modules/customers/schemas.py::CustomerRead.
  */
 export interface CustomerRead {
@@ -202,6 +278,7 @@ export interface CustomerUpdate {
  */
 export interface SaleItemCreate {
   product_id: string;
+  variant_id?: string | null;
   quantity: number;
 }
 
@@ -223,6 +300,7 @@ export interface SaleCreate {
 export interface SaleItemRead {
   id: string;
   product_id: string;
+  variant_id: string | null;
   quantity: number;
   unit_price: number;
 }

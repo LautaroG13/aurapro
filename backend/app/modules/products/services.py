@@ -11,8 +11,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.modules.products.models import Product, ProductVariant
+from app.modules.products.models import Product, ProductAttribute, ProductAttributeValue, ProductVariant
 from app.modules.products.schemas import (
+    ProductAttributeCreate,
+    ProductAttributeValueCreate,
     ProductCreate,
     ProductUpdate,
     ProductVariantBulkCreate,
@@ -26,6 +28,22 @@ class ProductNotFoundError(Exception):
 
 
 class ProductInUseError(Exception):
+    pass
+
+
+class ProductAttributeNotFoundError(Exception):
+    pass
+
+
+class ProductAttributeDuplicateNameError(Exception):
+    pass
+
+
+class ProductAttributeValueNotFoundError(Exception):
+    pass
+
+
+class ProductAttributeValueDuplicateError(Exception):
     pass
 
 
@@ -115,6 +133,74 @@ async def delete_product(db: AsyncSession, product_id: UUID) -> None:
         raise ProductInUseError(
             f"Producto {product_id} no se puede eliminar: tiene ventas asociadas"
         ) from exc
+
+
+async def create_attribute(
+    db: AsyncSession, tenant_id: UUID, payload: ProductAttributeCreate
+) -> ProductAttribute:
+    attribute = ProductAttribute(tenant_id=tenant_id, **payload.model_dump())
+    db.add(attribute)
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise ProductAttributeDuplicateNameError(f"Ya existe un atributo llamado '{payload.name}'") from exc
+    await db.refresh(attribute)
+    await db.refresh(attribute, attribute_names=["values"])
+    return attribute
+
+
+async def list_attributes(db: AsyncSession) -> list[ProductAttribute]:
+    result = await db.execute(
+        select(ProductAttribute)
+        .options(selectinload(ProductAttribute.values))
+        .order_by(ProductAttribute.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def _get_attribute(db: AsyncSession, attribute_id: UUID) -> ProductAttribute:
+    result = await db.execute(select(ProductAttribute).where(ProductAttribute.id == attribute_id))
+    attribute = result.scalar_one_or_none()
+    if attribute is None:
+        raise ProductAttributeNotFoundError(f"Atributo {attribute_id} no encontrado")
+    return attribute
+
+
+async def delete_attribute(db: AsyncSession, attribute_id: UUID) -> None:
+    attribute = await _get_attribute(db, attribute_id)
+    await db.delete(attribute)
+    await db.commit()
+
+
+async def create_attribute_value(
+    db: AsyncSession, tenant_id: UUID, attribute_id: UUID, payload: ProductAttributeValueCreate
+) -> ProductAttributeValue:
+    await _get_attribute(db, attribute_id)
+    value = ProductAttributeValue(tenant_id=tenant_id, attribute_id=attribute_id, **payload.model_dump())
+    db.add(value)
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise ProductAttributeValueDuplicateError(
+            f"El valor '{payload.value}' ya existe para este atributo"
+        ) from exc
+    await db.refresh(value)
+    return value
+
+
+async def delete_attribute_value(db: AsyncSession, attribute_id: UUID, value_id: UUID) -> None:
+    result = await db.execute(
+        select(ProductAttributeValue).where(
+            ProductAttributeValue.id == value_id, ProductAttributeValue.attribute_id == attribute_id
+        )
+    )
+    value = result.scalar_one_or_none()
+    if value is None:
+        raise ProductAttributeValueNotFoundError(f"Valor {value_id} no encontrado")
+    await db.delete(value)
+    await db.commit()
 
 
 async def get_variant(db: AsyncSession, product_id: UUID, variant_id: UUID) -> ProductVariant:

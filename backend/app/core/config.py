@@ -42,6 +42,16 @@ class Settings(BaseSettings):
     # "change-me" (ver README).
     access_token_expire_minutes: int = 60
 
+    # Invitación de usuarios (Identity). Sin default para resend_api_key
+    # a propósito -- send_email falla con un error claro si falta en vez
+    # de intentar mandar el mail igual. email_from usa el remitente de
+    # prueba de Resend (onboarding@resend.dev), que solo entrega a la
+    # casilla verificada de la cuenta hasta que se verifique un dominio
+    # propio -- suficiente para probar el flujo por ahora.
+    resend_api_key: str = ""
+    email_from: str = "AuraPro <onboarding@resend.dev>"
+    frontend_url: str = "http://localhost:3000"
+
     @property
     def async_database_url(self) -> str:
         """database_url usa el driver sync (psycopg2, postgresql://) para

@@ -1,11 +1,17 @@
 "use client";
 
 import { useMemo, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
 import { AuthGate } from "@/components/AuthGate";
 import { decodeToken, getStoredToken } from "@/lib/auth";
 
 import { Sidebar } from "./Sidebar";
+
+// /invite/[token] lo abre alguien que todavía no tiene cuenta ni
+// token -- no puede pasar por AuthGate (que exige login) como el resto
+// de la app.
+const PUBLIC_PATH_PREFIXES = ["/invite/"];
 
 /**
  * Shell persistente de la app: sidebar + área de contenido.
@@ -15,6 +21,13 @@ import { Sidebar } from "./Sidebar";
  * leer el token acá para saber si mostrar el link de Admin.
  */
 export function AppLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const isPublicRoute = PUBLIC_PATH_PREFIXES.some((prefix) => pathname?.startsWith(prefix));
+
+  if (isPublicRoute) {
+    return <div className="flex min-h-screen items-center justify-center bg-neutral-50 p-6">{children}</div>;
+  }
+
   return (
     <AuthGate>
       <AuthenticatedShell>{children}</AuthenticatedShell>
@@ -23,14 +36,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
 }
 
 function AuthenticatedShell({ children }: { children: ReactNode }) {
-  const isSuperadmin = useMemo(() => {
+  const { isSuperadmin, isAdmin } = useMemo(() => {
     const token = getStoredToken();
-    return token ? Boolean(decodeToken(token)?.is_superadmin) : false;
+    const payload = token ? decodeToken(token) : null;
+    return { isSuperadmin: Boolean(payload?.is_superadmin), isAdmin: payload?.role === "ADMIN" };
   }, []);
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar isSuperadmin={isSuperadmin} />
+      <Sidebar isSuperadmin={isSuperadmin} isAdmin={isAdmin} />
       <main className="flex-1 overflow-y-auto p-8">
         <div className="mx-auto flex max-w-4xl flex-col gap-6">{children}</div>
       </main>

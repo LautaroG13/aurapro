@@ -10,6 +10,7 @@ class SaleItemCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     product_id: UUID
+    variant_id: UUID | None = None
     quantity: int = Field(gt=0)
 
 
@@ -32,6 +33,7 @@ class SaleItemRead(BaseModel):
 
     id: UUID
     product_id: UUID
+    variant_id: UUID | None
     quantity: int
     unit_price: float
 

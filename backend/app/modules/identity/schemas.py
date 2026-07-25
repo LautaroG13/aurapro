@@ -44,6 +44,41 @@ class UserRead(BaseModel):
     created_at: datetime
 
 
+class InvitationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+    role: UserRole
+
+
+class InvitationRead(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    email: str
+    role: UserRole
+    created_at: datetime
+    expires_at: datetime
+    accepted_at: datetime | None
+
+
+class InvitationPreview(BaseModel):
+    """Lo que ve el invitado antes de aceptar -- sin id ni token, solo lo
+    necesario para mostrar a qué tenant y con qué rol se está sumando."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_name: str
+    email: str
+    role: UserRole
+
+
+class InvitationAccept(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    password: str = Field(min_length=8)
+
+
 class SalespersonRead(BaseModel):
     """Vista mínima de User para poblar selects (ej. vendedor default de
     un cliente) sin exponer role/is_superadmin/tenant_id a un VENDEDOR

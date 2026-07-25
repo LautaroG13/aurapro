@@ -38,6 +38,38 @@ class Product(Base, TenantModel):
     )
 
 
+class ProductAttribute(Base, TenantModel):
+    """Catálogo reutilizable de atributos por tenant (ej. "Color",
+    "Talle"), para que el frontend ofrezca chips en vez de texto libre
+    al armar variantes. Puramente auxiliar para la UI: ProductVariant
+    sigue guardando `attributes` como JSONB libre (ver docstring de esa
+    clase) sin ninguna FK hacia acá, así que borrar un atributo o un
+    valor del catálogo nunca afecta variantes ya creadas."""
+
+    __tablename__ = "product_attributes"
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_product_attributes_tenant_id_name"),)
+
+    name: Mapped[str] = mapped_column(String, nullable=False)
+
+    values: Mapped[list["ProductAttributeValue"]] = relationship(
+        back_populates="attribute", cascade="all, delete-orphan"
+    )
+
+
+class ProductAttributeValue(Base, TenantModel):
+    __tablename__ = "product_attribute_values"
+    __table_args__ = (
+        UniqueConstraint("attribute_id", "value", name="uq_product_attribute_values_attribute_id_value"),
+    )
+
+    attribute_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("product_attributes.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    value: Mapped[str] = mapped_column(String, nullable=False)
+
+    attribute: Mapped["ProductAttribute"] = relationship(back_populates="values")
+
+
 class ProductVariant(Base, TenantModel):
     """current_stock de Product sigue siendo la fuente de verdad para
     productos SIN variantes. Para productos CON variantes, el stock

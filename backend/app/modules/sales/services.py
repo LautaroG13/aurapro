@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.customers.models import Customer
-from app.modules.products.models import Product
+from app.modules.products.models import Product, ProductVariant
 from app.modules.sales.models import Sale, SaleItem, SaleStatus
 from app.modules.sales.schemas import SaleCreate
 from app.schemas.sales_event import SalesEvent
@@ -41,12 +41,35 @@ class ProductNotFoundError(Exception):
     pass
 
 
+class ProductVariantNotFoundError(Exception):
+    pass
+
+
+class VariantProductMismatchError(Exception):
+    pass
+
+
 class InsufficientStockError(Exception):
     pass
 
 
 class SaleNotFoundError(Exception):
     pass
+
+
+async def _lock_for_update(db: AsyncSession, model, entity_id: UUID):
+    return (
+        await db.execute(select(model).where(model.id == entity_id).with_for_update())
+    ).scalar_one_or_none()
+
+
+def _discount_stock(entity, stock_attr: str, quantity: int, label: str) -> None:
+    current = getattr(entity, stock_attr)
+    if current < quantity:
+        raise InsufficientStockError(
+            f"Stock insuficiente para '{label}': pedido {quantity}, disponible {current}"
+        )
+    setattr(entity, stock_attr, current - quantity)
 
 
 async def create_sale(db: AsyncSession, tenant_id: UUID, payload: SaleCreate) -> Sale:
@@ -61,26 +84,41 @@ async def create_sale(db: AsyncSession, tenant_id: UUID, payload: SaleCreate) ->
     total_amount = 0.0
 
     for item in payload.items:
-        product = (
-            await db.execute(select(Product).where(Product.id == item.product_id))
-        ).scalar_one_or_none()
+        # FOR UPDATE (en _lock_for_update): toma el lock de fila dentro
+        # de esta misma transacción. Si dos ventas concurrentes piden el
+        # mismo producto/variante, la segunda espera a que la primera
+        # haga commit (o rollback) antes de leer el stock -- sin esto,
+        # ambas podrían leer el mismo stock disponible y descontar sin
+        # ver el descuento de la otra.
+        product = await _lock_for_update(db, Product, item.product_id)
         if product is None:
             raise ProductNotFoundError(f"Producto {item.product_id} no encontrado")
 
-        # No pedido explícitamente, pero dejar vender por encima del
-        # stock disponible es un bug real de negocio, no un detalle
-        # opcional -- que el descuento efectivo sea asíncrono (lo hace
-        # el worker) no significa que haya que permitir vender lo que
-        # no hay.
-        if product.current_stock < item.quantity:
-            raise InsufficientStockError(
-                f"Stock insuficiente para '{product.name}': "
-                f"pedido {item.quantity}, disponible {product.current_stock}"
-            )
+        if item.variant_id is not None:
+            variant = await _lock_for_update(db, ProductVariant, item.variant_id)
+            if variant is None:
+                raise ProductVariantNotFoundError(f"Variante {item.variant_id} no encontrada")
+            if variant.product_id != product.id:
+                raise VariantProductMismatchError(
+                    f"La variante {variant.id} no pertenece al producto '{product.name}'"
+                )
+            _discount_stock(variant, "stock", item.quantity, f"{product.name} ({variant.sku or variant.attributes})")
+        else:
+            # Descuento síncrono, en la misma transacción de la venta --
+            # ya no depende de que un worker async lo procese después
+            # (ver worker-processor, que hoy solo loguea el evento y no
+            # toca stock).
+            _discount_stock(product, "current_stock", item.quantity, product.name)
 
         unit_price = float(product.price)
         sale_items.append(
-            SaleItem(tenant_id=tenant_id, product_id=product.id, quantity=item.quantity, unit_price=unit_price)
+            SaleItem(
+                tenant_id=tenant_id,
+                product_id=product.id,
+                variant_id=item.variant_id,
+                quantity=item.quantity,
+                unit_price=unit_price,
+            )
         )
         product_details_for_event.append(
             {

@@ -2,7 +2,8 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, String, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.async_base import Base
@@ -62,3 +63,26 @@ class User(Base, TenantModel):
     is_superadmin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
     tenant: Mapped["Tenant"] = relationship(back_populates="users")
+
+
+class Invitation(Base, TenantModel):
+    """Invitación pendiente para sumar un usuario a un tenant existente.
+    El primer usuario de un tenant se crea directo en register_tenant
+    (TenantRegister); a partir de ahí, todo usuario nuevo pasa por acá.
+    `token` es de un solo uso -- `accepted_at` no nulo lo invalida."""
+
+    __tablename__ = "invitations"
+
+    email: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    role: Mapped[UserRole] = mapped_column(
+        Enum(UserRole, name="user_role", native_enum=False, length=20),
+        nullable=False,
+    )
+    token: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    # SET NULL en vez de RESTRICT/CASCADE: quién invitó es informativo,
+    # no debería bloquear borrar ese User más adelante.
+    invited_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

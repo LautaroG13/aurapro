@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.async_base import Base
 from app.modules.customers.models import Customer
-from app.modules.products.models import Product
+from app.modules.products.models import Product, ProductVariant
 from app.shared.tenant_model import TenantModel
 
 
@@ -60,6 +60,12 @@ class SaleItem(Base, TenantModel):
     product_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("products.id", ondelete="RESTRICT"), nullable=False, index=True
     )
+    # Nullable: solo se completa cuando el producto vendido tiene
+    # variantes. RESTRICT, mismo criterio que product_id -- una variante
+    # vendida alguna vez no se puede borrar, es historial transaccional.
+    variant_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("product_variants.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     # Snapshot del precio al momento de la venta -- Product.price puede
     # cambiar después; el historial de ventas no debe reescribirse solo
@@ -68,3 +74,4 @@ class SaleItem(Base, TenantModel):
 
     sale: Mapped["Sale"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship()
+    variant: Mapped["ProductVariant | None"] = relationship()

@@ -7,6 +7,10 @@ from app.db.tenant_session import get_tenant_db
 from app.modules.identity.dependencies import CurrentUser, get_current_user, require_role
 from app.modules.identity.models import UserRole
 from app.modules.products.schemas import (
+    ProductAttributeCreate,
+    ProductAttributeRead,
+    ProductAttributeValueCreate,
+    ProductAttributeValueRead,
     ProductCreate,
     ProductRead,
     ProductUpdate,
@@ -16,17 +20,26 @@ from app.modules.products.schemas import (
     ProductVariantUpdate,
 )
 from app.modules.products.services import (
+    ProductAttributeDuplicateNameError,
+    ProductAttributeNotFoundError,
+    ProductAttributeValueDuplicateError,
+    ProductAttributeValueNotFoundError,
     ProductInUseError,
     ProductNotFoundError,
     ProductVariantDuplicateError,
     ProductVariantNotFoundError,
     ProductVariantSkuConflictError,
+    create_attribute,
+    create_attribute_value,
     create_product,
     create_variant,
     create_variants_bulk,
+    delete_attribute,
+    delete_attribute_value,
     delete_product,
     delete_variant,
     get_product,
+    list_attributes,
     list_products,
     update_product,
     update_variant,
@@ -35,6 +48,72 @@ from app.modules.products.services import (
 router = APIRouter()
 
 WRITE_ROLES = (UserRole.ADMIN.value, UserRole.VENDEDOR.value)
+
+
+# Registradas ANTES de "/{product_id}": mismo motivo que /customers/types
+# (ver ese router) -- si no, "GET /products/attributes" matchearía contra
+# "GET /{product_id}" primero y tiraría 422 al validar "attributes" como UUID.
+@router.post("/attributes", response_model=ProductAttributeRead, status_code=201)
+async def create_attribute_endpoint(
+    payload: ProductAttributeCreate,
+    current_user: CurrentUser = Depends(require_role(*WRITE_ROLES)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> ProductAttributeRead:
+    try:
+        attribute = await create_attribute(db, current_user.tenant_id, payload)
+    except ProductAttributeDuplicateNameError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ProductAttributeRead.model_validate(attribute)
+
+
+@router.get("/attributes", response_model=list[ProductAttributeRead])
+async def list_attributes_endpoint(
+    _current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> list[ProductAttributeRead]:
+    attributes = await list_attributes(db)
+    return [ProductAttributeRead.model_validate(a) for a in attributes]
+
+
+@router.delete("/attributes/{attribute_id}", status_code=204)
+async def delete_attribute_endpoint(
+    attribute_id: UUID,
+    _current_user: CurrentUser = Depends(require_role(*WRITE_ROLES)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> None:
+    try:
+        await delete_attribute(db, attribute_id)
+    except ProductAttributeNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/attributes/{attribute_id}/values", response_model=ProductAttributeValueRead, status_code=201)
+async def create_attribute_value_endpoint(
+    attribute_id: UUID,
+    payload: ProductAttributeValueCreate,
+    current_user: CurrentUser = Depends(require_role(*WRITE_ROLES)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> ProductAttributeValueRead:
+    try:
+        value = await create_attribute_value(db, current_user.tenant_id, attribute_id, payload)
+    except ProductAttributeNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProductAttributeValueDuplicateError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ProductAttributeValueRead.model_validate(value)
+
+
+@router.delete("/attributes/{attribute_id}/values/{value_id}", status_code=204)
+async def delete_attribute_value_endpoint(
+    attribute_id: UUID,
+    value_id: UUID,
+    _current_user: CurrentUser = Depends(require_role(*WRITE_ROLES)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> None:
+    try:
+        await delete_attribute_value(db, attribute_id, value_id)
+    except ProductAttributeValueNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("", response_model=ProductRead, status_code=201)
