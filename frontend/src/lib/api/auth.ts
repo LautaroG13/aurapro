@@ -22,6 +22,10 @@ export async function listSalespeople(): Promise<SalespersonRead[]> {
   return apiFetch<SalespersonRead[]>("/api/v1/auth/salespeople");
 }
 
+export async function getCurrentUser(): Promise<UserRead> {
+  return apiFetch<UserRead>("/api/v1/auth/me");
+}
+
 export async function listUsers(): Promise<UserRead[]> {
   return apiFetch<UserRead[]>("/api/v1/auth/users");
 }

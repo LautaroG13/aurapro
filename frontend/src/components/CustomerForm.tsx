@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { Button, Input, Select } from "@/components/ui";
 import { listSalespeople } from "@/lib/api/auth";
 import { createCustomer, createCustomerType, listCustomerTypes, updateCustomer } from "@/lib/api/customers";
 import type { CustomerRead, CustomerTaxStatus } from "@/lib/api/types";
@@ -75,156 +76,143 @@ export function CustomerForm({ editingCustomer, onDone }: CustomerFormProps) {
         e.preventDefault();
         saveMutation.mutate();
       }}
-      className="aura-card flex flex-col gap-4"
+      className="flex flex-col gap-4 rounded-base border border-border bg-surface p-5"
     >
-      <h2>{editingCustomer ? "Editar cliente" : "Nuevo cliente"}</h2>
+      <h2 className="font-display text-[14.5px] font-semibold text-text">
+        {editingCustomer ? "Editar cliente" : "Nuevo cliente"}
+      </h2>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         Nombre
-        <input value={name} onChange={(e) => setName(e.target.value)} required className="aura-input" />
+        <Input value={name} onChange={(e) => setName(e.target.value)} required />
       </label>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         Email
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="aura-input"
-        />
+        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
       </label>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         Teléfono
-        <input value={phone} onChange={(e) => setPhone(e.target.value)} className="aura-input" />
+        <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
       </label>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         Dirección
-        <input value={address} onChange={(e) => setAddress(e.target.value)} className="aura-input" />
+        <Input value={address} onChange={(e) => setAddress(e.target.value)} />
       </label>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         CUIT
-        <input value={cuit} onChange={(e) => setCuit(e.target.value)} className="aura-input" />
+        <Input className="font-mono" value={cuit} onChange={(e) => setCuit(e.target.value)} />
       </label>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         Situación fiscal
-        <select
-          value={taxStatus}
-          onChange={(e) => setTaxStatus(e.target.value as CustomerTaxStatus | "")}
-          className="aura-input"
-        >
+        <Select value={taxStatus} onChange={(e) => setTaxStatus(e.target.value as CustomerTaxStatus | "")}>
           <option value="">Sin especificar</option>
           {TAX_STATUSES.map((status) => (
             <option key={status} value={status}>
               {status}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         Límite de crédito
-        <input
+        <Input
+          className="font-mono"
           type="number"
           min="0"
           step="0.01"
           value={creditLimit}
           onChange={(e) => setCreditLimit(e.target.value)}
-          className="aura-input"
         />
       </label>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         Vendedor default
-        <select
-          value={defaultSalespersonId}
-          onChange={(e) => setDefaultSalespersonId(e.target.value)}
-          className="aura-input"
-        >
+        <Select value={defaultSalespersonId} onChange={(e) => setDefaultSalespersonId(e.target.value)}>
           <option value="">Sin asignar</option>
           {salespeopleQuery.data?.map((salesperson) => (
             <option key={salesperson.id} value={salesperson.id}>
               {salesperson.email}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
 
       <div className="flex flex-col gap-2">
-        <label className="aura-label">
+        <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
           Tipo de cliente
-          <select
-            value={customerTypeId}
-            onChange={(e) => setCustomerTypeId(e.target.value)}
-            className="aura-input"
-          >
+          <Select value={customerTypeId} onChange={(e) => setCustomerTypeId(e.target.value)}>
             <option value="">Sin tipo</option>
             {customerTypesQuery.data?.map((customerType) => (
               <option key={customerType.id} value={customerType.id}>
                 {customerType.name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
 
         {isCreatingType ? (
           <div className="flex gap-2">
-            <input
+            <Input
               value={newTypeName}
               onChange={(e) => setNewTypeName(e.target.value)}
               placeholder="Nombre del tipo (ej. Mayorista)"
-              className="aura-input"
             />
-            <button
+            <Button
               type="button"
+              variant="primary"
+              className="px-3 py-1"
               disabled={createTypeMutation.isPending || newTypeName.trim() === ""}
               onClick={() => createTypeMutation.mutate()}
-              className="aura-btn-primary px-3 py-1"
             >
               {createTypeMutation.isPending ? "Creando..." : "Crear"}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="secondary"
+              className="px-3 py-1"
               onClick={() => {
                 setIsCreatingType(false);
                 setNewTypeName("");
               }}
-              className="aura-btn-secondary px-3 py-1"
             >
               Cancelar
-            </button>
+            </Button>
           </div>
         ) : (
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            className="self-start px-2 py-1 text-xs"
             onClick={() => setIsCreatingType(true)}
-            className="aura-btn-secondary self-start px-2 py-1 text-sm"
           >
             + Nuevo tipo
-          </button>
+          </Button>
         )}
 
         {createTypeMutation.isError && (
-          <p role="alert" className="aura-alert">
+          <p role="alert" className="rounded-base border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">
             {(createTypeMutation.error as Error).message}
           </p>
         )}
       </div>
 
       <div className="flex gap-2">
-        <button type="submit" disabled={saveMutation.isPending} className="aura-btn-primary self-start">
+        <Button type="submit" variant="primary" className="self-start" disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Guardando..." : editingCustomer ? "Guardar cambios" : "Crear cliente"}
-        </button>
-        <button type="button" onClick={onDone} className="aura-btn-secondary self-start">
+        </Button>
+        <Button type="button" variant="secondary" className="self-start" onClick={onDone}>
           Cancelar
-        </button>
+        </Button>
       </div>
 
       {saveMutation.isError && (
-        <p role="alert" className="aura-alert">
+        <p role="alert" className="rounded-base border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">
           {(saveMutation.error as Error).message}
         </p>
       )}

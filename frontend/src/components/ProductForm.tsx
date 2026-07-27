@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { Button, Input, Select } from "@/components/ui";
 import { createCategory, createProduct, listCategories, updateProduct } from "@/lib/api/products";
 import type { ProductRead } from "@/lib/api/types";
 
@@ -71,148 +72,144 @@ export function ProductForm({ editingProduct, onDone }: ProductFormProps) {
         e.preventDefault();
         saveMutation.mutate();
       }}
-      className="aura-card flex flex-col gap-4"
+      className="flex flex-col gap-4 rounded-base border border-border bg-surface p-5"
     >
-      <h2>{editingProduct ? "Editar producto" : "Nuevo producto"}</h2>
+      <h2 className="font-display text-[14.5px] font-semibold text-text">
+        {editingProduct ? "Editar producto" : "Nuevo producto"}
+      </h2>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         Nombre
-        <input value={name} onChange={(e) => setName(e.target.value)} required className="aura-input" />
+        <Input value={name} onChange={(e) => setName(e.target.value)} required />
       </label>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         Descripción
-        <input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="aura-input"
-        />
+        <Input value={description} onChange={(e) => setDescription(e.target.value)} />
       </label>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         Precio
-        <input
+        <Input
+          className="font-mono"
           type="number"
           min="0.01"
           step="0.01"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
           required
-          className="aura-input"
         />
       </label>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         Costo
-        <input
+        <Input
+          className="font-mono"
           type="number"
           min="0.01"
           step="0.01"
           value={cost}
           onChange={(e) => setCost(e.target.value)}
-          className="aura-input"
         />
       </label>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         Stock actual
-        <input
+        <Input
+          className="font-mono"
           type="number"
           min="0"
           step="1"
           value={currentStock}
           onChange={(e) => setCurrentStock(e.target.value)}
           required
-          className="aura-input"
         />
       </label>
 
       <div className="flex flex-col gap-2">
-        <label className="aura-label">
+        <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
           Categoría
-          <select
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className="aura-input"
-          >
+          <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             <option value="">Sin categoría</option>
             {categoriesQuery.data?.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
 
         {isCreatingCategory ? (
           <div className="flex gap-2">
-            <input
+            <Input
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="Nombre (ej. Remeras)"
-              className="aura-input"
             />
-            <button
+            <Button
               type="button"
+              variant="primary"
+              className="px-3 py-1"
               disabled={createCategoryMutation.isPending || newCategoryName.trim() === ""}
               onClick={() => createCategoryMutation.mutate()}
-              className="aura-btn-primary px-3 py-1"
             >
               Crear
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="secondary"
+              className="px-3 py-1"
               onClick={() => {
                 setIsCreatingCategory(false);
                 setNewCategoryName("");
               }}
-              className="aura-btn-secondary px-3 py-1"
             >
               Cancelar
-            </button>
+            </Button>
           </div>
         ) : (
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            className="self-start px-2 py-1 text-xs"
             onClick={() => setIsCreatingCategory(true)}
-            className="aura-btn-secondary self-start px-2 py-1 text-sm"
           >
             + Nueva categoría
-          </button>
+          </Button>
         )}
       </div>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         SKU
-        <input value={sku} onChange={(e) => setSku(e.target.value)} className="aura-input" />
+        <Input className="font-mono" value={sku} onChange={(e) => setSku(e.target.value)} />
       </label>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         Código de barras
-        <input value={barcode} onChange={(e) => setBarcode(e.target.value)} className="aura-input" />
+        <Input className="font-mono" value={barcode} onChange={(e) => setBarcode(e.target.value)} />
       </label>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         URL de imagen
-        <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="aura-input" />
+        <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
       </label>
 
-      <label className="flex items-center gap-2 text-sm font-medium text-neutral-700">
+      <label className="flex items-center gap-2 font-body text-[13.5px] font-medium text-text">
         <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
         Activo (visible para vender)
       </label>
 
       <div className="flex gap-2">
-        <button type="submit" disabled={saveMutation.isPending} className="aura-btn-primary self-start">
+        <Button type="submit" variant="primary" className="self-start" disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Guardando..." : editingProduct ? "Guardar cambios" : "Crear producto"}
-        </button>
-        <button type="button" onClick={onDone} className="aura-btn-secondary self-start">
+        </Button>
+        <Button type="button" variant="secondary" className="self-start" onClick={onDone}>
           Cancelar
-        </button>
+        </Button>
       </div>
 
       {saveMutation.isError && (
-        <p role="alert" className="aura-alert">
+        <p role="alert" className="rounded-base border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">
           {(saveMutation.error as Error).message}
         </p>
       )}
