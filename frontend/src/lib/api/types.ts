@@ -349,6 +349,8 @@ export interface SaleCreate {
   payment_method: string;
   currency?: string;
   items: SaleItemCreate[];
+  card_coupon_number?: string | null;
+  card_authorization_code?: string | null;
 }
 
 /**
@@ -373,6 +375,8 @@ export interface SaleRead {
   currency: string;
   status: "PENDING" | "COMPLETED" | "CANCELLED";
   payment_method: string;
+  card_coupon_number: string | null;
+  card_authorization_code: string | null;
   created_at: string;
   items: SaleItemRead[];
 }

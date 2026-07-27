@@ -5,16 +5,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { listCustomers } from "@/lib/api/customers";
 import { listProducts } from "@/lib/api/products";
-import { createSale } from "@/lib/api/sales";
+import { createSale, downloadSaleReceipt } from "@/lib/api/sales";
 import type { ProductRead, ProductVariantRead } from "@/lib/api/types";
+import { PAYMENT_METHODS, isCardPayment, paymentMethodLabel } from "@/lib/paymentMethods";
 
 interface CartLine {
   product: ProductRead;
   variant: ProductVariantRead | null;
   quantity: number;
 }
-
-const PAYMENT_METHODS = ["cash", "card", "transfer", "account"] as const;
 
 function lineKey(productId: string, variantId: string | null): string {
   return variantId ? `${productId}:${variantId}` : productId;
@@ -32,9 +31,12 @@ export function SaleForm() {
 
   const [customerId, setCustomerId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS[0]);
+  const [cardCouponNumber, setCardCouponNumber] = useState("");
+  const [cardAuthorizationCode, setCardAuthorizationCode] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [selectedVariantByProduct, setSelectedVariantByProduct] = useState<Record<string, string>>({});
+  const [isDownloadingReceipt, setIsDownloadingReceipt] = useState(false);
 
   const filteredProducts = useMemo(() => {
     // Inactivo = dado de baja, no debe ofrecerse para vender (sigue
@@ -94,10 +96,14 @@ export function SaleForm() {
           variant_id: line.variant?.id ?? null,
           quantity: line.quantity,
         })),
+        card_coupon_number: isCardPayment(paymentMethod) ? cardCouponNumber || null : null,
+        card_authorization_code: isCardPayment(paymentMethod) ? cardAuthorizationCode || null : null,
       }),
     onSuccess: () => {
       setCart([]);
       setCustomerId("");
+      setCardCouponNumber("");
+      setCardAuthorizationCode("");
       // el stock mostrado en la lista de productos cambió del lado del
       // servidor (aunque el descuento real lo haga el worker en
       // background de forma asíncrona, current_stock no se mueve acá)
@@ -140,12 +146,33 @@ export function SaleForm() {
           >
             {PAYMENT_METHODS.map((method) => (
               <option key={method} value={method}>
-                {method}
+                {paymentMethodLabel(method)}
               </option>
             ))}
           </select>
         </label>
       </div>
+
+      {isCardPayment(paymentMethod) && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="aura-label">
+            Número de cupón (opcional)
+            <input
+              value={cardCouponNumber}
+              onChange={(e) => setCardCouponNumber(e.target.value)}
+              className="aura-input"
+            />
+          </label>
+          <label className="aura-label">
+            Código de autorización (opcional)
+            <input
+              value={cardAuthorizationCode}
+              onChange={(e) => setCardAuthorizationCode(e.target.value)}
+              className="aura-input"
+            />
+          </label>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <input
@@ -267,10 +294,27 @@ export function SaleForm() {
         </p>
       )}
       {saleMutation.isSuccess && (
-        <p className="text-sm text-text-dim">
-          Venta registrada ({saleMutation.data.id}) — Total real: $
-          {saleMutation.data.total_amount.toFixed(2)} {saleMutation.data.currency}
-        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-text-dim">
+            Venta registrada ({saleMutation.data.id}) — Total real: $
+            {saleMutation.data.total_amount.toFixed(2)} {saleMutation.data.currency}
+          </p>
+          <button
+            type="button"
+            disabled={isDownloadingReceipt}
+            onClick={async () => {
+              setIsDownloadingReceipt(true);
+              try {
+                await downloadSaleReceipt(saleMutation.data.id);
+              } finally {
+                setIsDownloadingReceipt(false);
+              }
+            }}
+            className="aura-btn-secondary px-3 py-1"
+          >
+            {isDownloadingReceipt ? "Generando..." : "Descargar comprobante"}
+          </button>
+        </div>
       )}
     </div>
   );

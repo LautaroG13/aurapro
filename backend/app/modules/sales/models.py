@@ -40,6 +40,14 @@ class Sale(Base, TenantModel):
         server_default=SaleStatus.COMPLETED.value,
     )
     payment_method: Mapped[str] = mapped_column(String, nullable=False)
+    # Solo tienen sentido cuando payment_method es una tarjeta
+    # (card_debit/card_credit) -- nullable a propósito, no se valida a
+    # nivel DB porque son opcionales incluso para pagos con tarjeta (ver
+    # decisión de producto: no bloquear la venta si el posnet falla).
+    # Si en el futuro se conecta una API de pasarela de pago, estos
+    # mismos campos se completarían automáticamente en vez de a mano.
+    card_coupon_number: Mapped[str | None] = mapped_column(String, nullable=True)
+    card_authorization_code: Mapped[str | None] = mapped_column(String, nullable=True)
 
     customer: Mapped["Customer"] = relationship()
     items: Mapped[list["SaleItem"]] = relationship(back_populates="sale", cascade="all, delete-orphan")

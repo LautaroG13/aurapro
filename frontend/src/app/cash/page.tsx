@@ -10,6 +10,7 @@ import {
   getCurrentCashSession,
   openCashSession,
 } from "@/lib/api/treasury";
+import { paymentMethodLabel } from "@/lib/paymentMethods";
 
 export default function CashPage() {
   const queryClient = useQueryClient();
@@ -138,7 +139,7 @@ export default function CashPage() {
                   <tbody>
                     {salesSummaryQuery.data?.map((row) => (
                       <tr key={row.payment_method}>
-                        <td>{row.payment_method}</td>
+                        <td>{paymentMethodLabel(row.payment_method)}</td>
                         <td>{row.count}</td>
                         <td>${row.total_amount.toFixed(2)}</td>
                       </tr>

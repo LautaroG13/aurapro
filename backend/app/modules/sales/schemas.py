@@ -26,6 +26,10 @@ class SaleCreate(BaseModel):
     payment_method: str = Field(min_length=1)
     currency: str = Field(default="USD", pattern=r"^[A-Z]{3}$")
     items: list[SaleItemCreate] = Field(min_length=1)
+    # Opcionales incluso cuando payment_method es tarjeta -- ver nota en
+    # el modelo Sale.
+    card_coupon_number: str | None = None
+    card_authorization_code: str | None = None
 
 
 class SaleItemRead(BaseModel):
@@ -48,5 +52,7 @@ class SaleRead(BaseModel):
     currency: str
     status: SaleStatus
     payment_method: str
+    card_coupon_number: str | None
+    card_authorization_code: str | None
     created_at: datetime
     items: list[SaleItemRead]

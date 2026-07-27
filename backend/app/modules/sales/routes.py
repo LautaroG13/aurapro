@@ -1,11 +1,13 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.tenant_session import get_tenant_db
 from app.modules.identity.dependencies import CurrentUser, get_current_user, require_role
-from app.modules.identity.models import UserRole
+from app.modules.identity.models import Tenant, UserRole
+from app.modules.sales.pdf import build_sale_receipt_pdf
 from app.modules.sales.schemas import SaleCreate, SaleRead
 from app.modules.sales.services import (
     CustomerNotFoundError,
@@ -70,3 +72,27 @@ async def get_sale_endpoint(
     except SaleNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return SaleRead.model_validate(sale)
+
+
+@router.get("/{sale_id}/receipt")
+async def get_sale_receipt_endpoint(
+    sale_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> Response:
+    try:
+        sale = await get_sale(db, sale_id)
+    except SaleNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+    ).scalar_one_or_none()
+    tenant_name = tenant.name if tenant is not None else "AuraPro"
+
+    pdf_bytes = build_sale_receipt_pdf(sale, tenant_name=tenant_name, customer_name=sale.customer.name)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="venta-{sale.id}.pdf"'},
+    )

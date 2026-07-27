@@ -6,8 +6,9 @@ import { useState } from "react";
 import { Button, DataTable, Input, Select } from "@/components/ui";
 import { createCustomerPayment, getCustomerAccount } from "@/lib/api/treasury";
 import type { CustomerRead } from "@/lib/api/types";
+import { paymentMethodLabel } from "@/lib/paymentMethods";
 
-const PAYMENT_METHODS = ["cash", "card", "transfer"] as const;
+const PAYMENT_METHODS = ["cash", "card_debit", "card_credit", "transfer"] as const;
 
 interface CustomerAccountProps {
   customer: CustomerRead;
@@ -116,7 +117,7 @@ export function CustomerAccount({ customer }: CustomerAccountProps) {
           <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
             {PAYMENT_METHODS.map((method) => (
               <option key={method} value={method}>
-                {method}
+                {paymentMethodLabel(method)}
               </option>
             ))}
           </Select>

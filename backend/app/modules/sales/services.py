@@ -145,6 +145,8 @@ async def create_sale(db: AsyncSession, tenant_id: UUID, payload: SaleCreate) ->
         currency=payload.currency,
         status=SaleStatus.COMPLETED,
         payment_method=payload.payment_method,
+        card_coupon_number=payload.card_coupon_number,
+        card_authorization_code=payload.card_authorization_code,
     )
     sale.items = sale_items
     db.add(sale)
@@ -191,7 +193,13 @@ async def list_sales(db: AsyncSession, skip: int = 0, limit: int = 50) -> list[S
 
 async def get_sale(db: AsyncSession, sale_id: UUID) -> Sale:
     result = await db.execute(
-        select(Sale).options(selectinload(Sale.items)).where(Sale.id == sale_id)
+        select(Sale)
+        .options(
+            selectinload(Sale.items).selectinload(SaleItem.product),
+            selectinload(Sale.items).selectinload(SaleItem.variant),
+            selectinload(Sale.customer),
+        )
+        .where(Sale.id == sale_id)
     )
     sale = result.scalar_one_or_none()
     if sale is None:

@@ -37,3 +37,25 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
   return (await res.json()) as T;
 }
+
+/**
+ * Variante de apiFetch para respuestas binarias (ej. el PDF del
+ * comprobante de venta) -- no fuerza Content-Type: application/json ni
+ * intenta parsear la respuesta como JSON.
+ */
+export async function apiFetchBlob(path: string): Promise<Blob> {
+  const token = getStoredToken();
+  const headers = new Headers();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const res = await fetch(`${API_URL}${path}`, { headers });
+
+  if (!res.ok) {
+    const body: { detail?: string } | null = await res.json().catch(() => null);
+    throw new ApiError(res.status, body?.detail ?? `Error ${res.status}`);
+  }
+
+  return res.blob();
+}
