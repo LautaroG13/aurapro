@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { Button, Input } from "@/components/ui";
 import {
   createAttribute,
   createAttributeValue,
@@ -35,8 +36,8 @@ function AttributeChip({
       onClick={onClick}
       className={
         isSelected
-          ? "rounded-full bg-neutral-900 px-3 py-1 text-xs font-medium text-white"
-          : "rounded-full border border-neutral-300 px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+          ? "rounded-full bg-accent px-3 py-1 font-body text-xs font-medium text-[#0C1420]"
+          : "rounded-full border border-border px-3 py-1 font-body text-xs font-medium text-text-dim hover:bg-surface-2 hover:text-text"
       }
     >
       {label}
@@ -85,33 +86,35 @@ function AttributeNameSelector({
       ))}
       {isCreating ? (
         <span className="flex items-center gap-1">
-          <input
+          <Input
             autoFocus
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Nombre (ej. Color)"
-            className="aura-input w-32 py-1 text-xs"
+            className="w-32 py-1 text-xs"
           />
-          <button
+          <Button
             type="button"
+            variant="primary"
+            className="px-2 py-1 text-xs"
             disabled={createMutation.isPending || newName.trim() === ""}
             onClick={() => createMutation.mutate()}
-            className="aura-btn-primary px-2 py-1 text-xs"
           >
             OK
-          </button>
+          </Button>
         </span>
       ) : (
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          className="px-2 py-1 text-xs"
           onClick={() => setIsCreating(true)}
-          className="aura-btn-secondary px-2 py-1 text-xs"
         >
           + Nuevo atributo
-        </button>
+        </Button>
       )}
       {createMutation.isError && (
-        <span className="text-xs text-red-600">{(createMutation.error as Error).message}</span>
+        <span className="text-xs text-danger">{(createMutation.error as Error).message}</span>
       )}
     </div>
   );
@@ -155,33 +158,35 @@ function AttributeValueChips({
       ))}
       {isCreating ? (
         <span className="flex items-center gap-1">
-          <input
+          <Input
             autoFocus
             value={newValue}
             onChange={(e) => setNewValue(e.target.value)}
             placeholder="Valor (ej. Rojo)"
-            className="aura-input w-28 py-1 text-xs"
+            className="w-28 py-1 text-xs"
           />
-          <button
+          <Button
             type="button"
+            variant="primary"
+            className="px-2 py-1 text-xs"
             disabled={createMutation.isPending || newValue.trim() === ""}
             onClick={() => createMutation.mutate()}
-            className="aura-btn-primary px-2 py-1 text-xs"
           >
             OK
-          </button>
+          </Button>
         </span>
       ) : (
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          className="px-2 py-1 text-xs"
           onClick={() => setIsCreating(true)}
-          className="aura-btn-secondary px-2 py-1 text-xs"
         >
           + Valor
-        </button>
+        </Button>
       )}
       {createMutation.isError && (
-        <span className="text-xs text-red-600">{(createMutation.error as Error).message}</span>
+        <span className="text-xs text-danger">{(createMutation.error as Error).message}</span>
       )}
     </div>
   );
@@ -256,7 +261,7 @@ function SingleAttributeRow({ row, attributes, onChange, onRemove, canRemove }: 
   const selectedAttribute = attributes.find((a) => a.id === row.attributeId);
 
   return (
-    <div className="flex flex-col gap-2 rounded border border-neutral-100 p-2">
+    <div className="flex flex-col gap-2 rounded-base border border-border p-2">
       <div className="flex items-start justify-between gap-2">
         <AttributeNameSelector
           attributes={attributes}
@@ -264,14 +269,9 @@ function SingleAttributeRow({ row, attributes, onChange, onRemove, canRemove }: 
           onSelect={(attributeId) => onChange({ ...row, attributeId, valueId: null, rawName: "" })}
           initialCreateName={row.attributeId ? undefined : row.rawName}
         />
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={!canRemove}
-          className="aura-btn-secondary shrink-0 px-2"
-        >
+        <Button type="button" variant="secondary" className="shrink-0 px-2" disabled={!canRemove} onClick={onRemove}>
           -
-        </button>
+        </Button>
       </div>
       {selectedAttribute && (
         <AttributeValueChips
@@ -309,7 +309,7 @@ function VariantAttributesEditor({
   const [stock, setStock] = useState(String(initialStock));
 
   return (
-    <div className="flex flex-col gap-2 rounded border border-neutral-200 p-3">
+    <div className="flex flex-col gap-2 rounded-base border border-border p-3">
       {rows.map((row, index) => (
         <SingleAttributeRow
           key={row.key}
@@ -320,45 +320,47 @@ function VariantAttributesEditor({
           canRemove={rows.length > 1}
         />
       ))}
-      <button
+      <Button
         type="button"
+        variant="secondary"
+        className="self-start px-2"
         onClick={() => setRows([...rows, newSingleRow()])}
-        className="aura-btn-secondary self-start px-2"
       >
         + Atributo
-      </button>
+      </Button>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         SKU (opcional)
-        <input value={sku} onChange={(e) => setSku(e.target.value)} className="aura-input" />
+        <Input className="font-mono" value={sku} onChange={(e) => setSku(e.target.value)} />
       </label>
 
-      <label className="aura-label">
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
         Stock
-        <input
+        <Input
+          className="font-mono"
           type="number"
           min="0"
           step="1"
           value={stock}
           onChange={(e) => setStock(e.target.value)}
-          className="aura-input"
         />
       </label>
 
       <div className="flex gap-2">
-        <button
+        <Button
           type="button"
+          variant="primary"
+          className="px-3 py-1"
           disabled={isSaving}
           onClick={() =>
             onSave(rowsToAttributes(rows, attributes), sku.trim() === "" ? null : sku.trim(), Number(stock))
           }
-          className="aura-btn-primary px-3 py-1"
         >
           {isSaving ? "Guardando..." : "Guardar"}
-        </button>
-        <button type="button" onClick={onCancel} className="aura-btn-secondary px-3 py-1">
+        </Button>
+        <Button type="button" variant="secondary" className="px-3 py-1" onClick={onCancel}>
           Cancelar
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -418,21 +420,16 @@ function MultiValueAttributeRow({
   const selectedAttribute = attributes.find((a) => a.id === row.attributeId);
 
   return (
-    <div className="flex flex-col gap-2 rounded border border-neutral-100 p-2">
+    <div className="flex flex-col gap-2 rounded-base border border-border p-2">
       <div className="flex items-start justify-between gap-2">
         <AttributeNameSelector
           attributes={attributes}
           selectedAttributeId={row.attributeId}
           onSelect={(attributeId) => onChange({ ...row, attributeId, valueIds: [] })}
         />
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={!canRemove}
-          className="aura-btn-secondary shrink-0 px-2"
-        >
+        <Button type="button" variant="secondary" className="shrink-0 px-2" disabled={!canRemove} onClick={onRemove}>
           -
-        </button>
+        </Button>
       </div>
       {selectedAttribute && (
         <AttributeValueChips
@@ -517,8 +514,8 @@ function VariantCombinationGenerator({
 
   if (rows === null) {
     return (
-      <div className="flex flex-col gap-3 rounded border border-neutral-200 p-3">
-        <p className="text-sm text-neutral-500">
+      <div className="flex flex-col gap-3 rounded-base border border-border p-3">
+        <p className="font-body text-sm text-text-dim">
           Elegí uno o más atributos y tildá sus valores posibles (o agregá uno nuevo al vuelo). Se
           generará una variante por cada combinación.
         </p>
@@ -532,26 +529,28 @@ function VariantCombinationGenerator({
             canRemove={axisRows.length > 1}
           />
         ))}
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          className="self-start px-2"
           onClick={() => setAxisRows([...axisRows, newMultiRow()])}
-          className="aura-btn-secondary self-start px-2"
         >
           + Atributo
-        </button>
+        </Button>
 
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
+            variant="primary"
+            className="px-3 py-1"
             disabled={parsedAxes.length === 0}
             onClick={handleGenerate}
-            className="aura-btn-primary px-3 py-1"
           >
             Generar combinaciones
-          </button>
-          <button type="button" onClick={onCancel} className="aura-btn-secondary px-3 py-1">
+          </Button>
+          <Button type="button" variant="secondary" className="px-3 py-1" onClick={onCancel}>
             Cancelar
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -560,11 +559,11 @@ function VariantCombinationGenerator({
   const attributeNames = parsedAxes.map((axis) => axis.name);
 
   return (
-    <div className="flex flex-col gap-3 rounded border border-neutral-200 p-3">
+    <div className="flex flex-col gap-3 rounded-base border border-border p-3">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full font-body text-sm">
           <thead>
-            <tr className="text-left text-neutral-500">
+            <tr className="text-left text-text-faint">
               {attributeNames.map((name) => (
                 <th key={name} className="px-2 py-1">
                   {name}
@@ -576,23 +575,24 @@ function VariantCombinationGenerator({
           </thead>
           <tbody>
             {rows.map((row, index) => (
-              <tr key={index} className="border-t border-neutral-100">
+              <tr key={index} className="border-t border-border">
                 {attributeNames.map((name) => (
-                  <td key={name} className="px-2 py-1">
+                  <td key={name} className="px-2 py-1 text-text">
                     {row.attributes[name]}
                   </td>
                 ))}
                 <td className="px-2 py-1">
-                  <input
+                  <Input
+                    className="font-mono"
                     value={row.sku}
                     onChange={(e) =>
                       setRows(rows.map((r, i) => (i === index ? { ...r, sku: e.target.value } : r)))
                     }
-                    className="aura-input"
                   />
                 </td>
                 <td className="px-2 py-1">
-                  <input
+                  <Input
+                    className="w-24 font-mono"
                     type="number"
                     min="0"
                     step="1"
@@ -600,7 +600,6 @@ function VariantCombinationGenerator({
                     onChange={(e) =>
                       setRows(rows.map((r, i) => (i === index ? { ...r, stock: e.target.value } : r)))
                     }
-                    className="aura-input w-24"
                   />
                 </td>
               </tr>
@@ -610,8 +609,10 @@ function VariantCombinationGenerator({
       </div>
 
       <div className="flex gap-2">
-        <button
+        <Button
           type="button"
+          variant="primary"
+          className="px-3 py-1"
           disabled={isSaving}
           onClick={() =>
             onCreate(
@@ -622,16 +623,15 @@ function VariantCombinationGenerator({
               }))
             )
           }
-          className="aura-btn-primary px-3 py-1"
         >
           {isSaving ? "Creando..." : `Crear las ${rows.length} variantes`}
-        </button>
-        <button type="button" onClick={() => setRows(null)} className="aura-btn-secondary px-3 py-1">
+        </Button>
+        <Button type="button" variant="secondary" className="px-3 py-1" onClick={() => setRows(null)}>
           Volver a los atributos
-        </button>
-        <button type="button" onClick={onCancel} className="aura-btn-secondary px-3 py-1">
+        </Button>
+        <Button type="button" variant="secondary" className="px-3 py-1" onClick={onCancel}>
           Cancelar
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -701,11 +701,11 @@ export function ProductVariants({ product }: ProductVariantsProps) {
   });
 
   return (
-    <div className="flex flex-col gap-3 border-t border-neutral-200 pt-4">
-      <h3>Variantes</h3>
+    <div className="flex flex-col gap-3 border-t border-border pt-4">
+      <h3 className="font-display text-sm font-semibold text-text">Variantes</h3>
 
       {liveProduct.variants.length === 0 && addMode === "none" && (
-        <p className="text-sm text-neutral-500">Sin variantes todavía.</p>
+        <p className="font-body text-sm text-text-dim">Sin variantes todavía.</p>
       )}
 
       <ul className="flex flex-col gap-2">
@@ -725,31 +725,33 @@ export function ProductVariants({ product }: ProductVariantsProps) {
               />
             </li>
           ) : (
-            <li key={variant.id} className="flex items-center justify-between gap-2 text-sm">
+            <li key={variant.id} className="flex items-center justify-between gap-2 font-body text-sm text-text">
               <span>
                 {formatAttributes(variant.attributes)}
                 {variant.sku ? ` — SKU: ${variant.sku}` : ""} — stock: {variant.stock}
               </span>
               <span className="flex gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  className="px-2 py-1"
                   onClick={() => setEditingVariantId(variant.id)}
-                  className="aura-btn-secondary px-2 py-1"
                 >
                   Editar
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="danger"
+                  className="px-2 py-1"
+                  disabled={deleteMutation.isPending}
                   onClick={() => {
                     if (window.confirm("¿Borrar esta variante?")) {
                       deleteMutation.mutate(variant.id);
                     }
                   }}
-                  disabled={deleteMutation.isPending}
-                  className="aura-btn-danger px-2 py-1"
                 >
                   Borrar
-                </button>
+                </Button>
               </span>
             </li>
           )
@@ -780,12 +782,12 @@ export function ProductVariants({ product }: ProductVariantsProps) {
 
       {addMode === "none" && (
         <div className="flex gap-2">
-          <button type="button" onClick={() => setAddMode("single")} className="aura-btn-secondary">
+          <Button type="button" variant="secondary" onClick={() => setAddMode("single")}>
             + Agregar variante
-          </button>
-          <button type="button" onClick={() => setAddMode("generate")} className="aura-btn-secondary">
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setAddMode("generate")}>
             + Generar combinaciones
-          </button>
+          </Button>
         </div>
       )}
 
@@ -793,7 +795,7 @@ export function ProductVariants({ product }: ProductVariantsProps) {
         updateMutation.isError ||
         deleteMutation.isError ||
         createBulkMutation.isError) && (
-        <p role="alert" className="aura-alert">
+        <p role="alert" className="rounded-base border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">
           {(
             (createMutation.error ??
               updateMutation.error ??

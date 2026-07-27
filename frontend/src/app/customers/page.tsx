@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { CustomerForm } from "@/components/CustomerForm";
 import { CustomersTable } from "@/components/CustomersTable";
+import { Button } from "@/components/ui";
 import type { CustomerRead } from "@/lib/api/types";
 
 type FormTarget = CustomerRead | "new" | null;
@@ -13,16 +14,12 @@ export default function CustomersPage() {
 
   return (
     <>
-      <h1>AuraPro — Clientes</h1>
+      <h1 className="font-display text-xl font-semibold tracking-tight text-text">AuraPro — Clientes</h1>
 
       {formTarget === null ? (
-        <button
-          type="button"
-          onClick={() => setFormTarget("new")}
-          className="aura-btn-primary self-start"
-        >
+        <Button variant="primary" className="self-start" onClick={() => setFormTarget("new")}>
           Nuevo cliente
-        </button>
+        </Button>
       ) : (
         <CustomerForm
           key={formTarget === "new" ? "new" : formTarget.id}

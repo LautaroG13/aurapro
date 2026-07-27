@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { Button, Card, DataTable } from "@/components/ui";
 import { deleteCustomer, listCustomers, listCustomerTypes } from "@/lib/api/customers";
 import type { CustomerRead } from "@/lib/api/types";
 
@@ -26,85 +27,83 @@ export function CustomersTable({ onEdit }: CustomersTableProps) {
 
   if (customersQuery.isLoading) {
     return (
-      <div className="aura-card">
-        <p className="text-sm text-neutral-500">Cargando clientes...</p>
-      </div>
+      <Card className="p-5">
+        <p className="font-body text-sm text-text-dim">Cargando clientes...</p>
+      </Card>
     );
   }
 
   if (customersQuery.isError) {
     return (
-      <div className="aura-card">
-        <p role="alert" className="aura-alert">
+      <Card className="p-5">
+        <p role="alert" className="rounded-base border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">
           {(customersQuery.error as Error).message}
         </p>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="aura-card flex flex-col gap-4">
-      <h2>Clientes</h2>
+    <Card className="flex flex-col gap-4 p-5">
+      <h2 className="font-display text-[14.5px] font-semibold text-text">Clientes</h2>
       <div className="overflow-x-auto">
-        <table className="aura-table">
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Email</th>
-              <th>Teléfono</th>
-              <th>Tipo</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
+        <DataTable.Root>
+          <DataTable.Head>
+            <DataTable.Row className="hover:bg-transparent">
+              <DataTable.HeaderCell>Nombre</DataTable.HeaderCell>
+              <DataTable.HeaderCell>Email</DataTable.HeaderCell>
+              <DataTable.HeaderCell>Teléfono</DataTable.HeaderCell>
+              <DataTable.HeaderCell>Tipo</DataTable.HeaderCell>
+              <DataTable.HeaderCell></DataTable.HeaderCell>
+            </DataTable.Row>
+          </DataTable.Head>
+          <DataTable.Body>
             {customersQuery.data?.map((customer) => (
-              <tr key={customer.id}>
-                <td>{customer.name}</td>
-                <td>{customer.email ?? "—"}</td>
-                <td>{customer.phone ?? "—"}</td>
-                <td>
+              <DataTable.Row key={customer.id}>
+                <DataTable.Cell>{customer.name}</DataTable.Cell>
+                <DataTable.Cell className="text-text-dim">{customer.email ?? "—"}</DataTable.Cell>
+                <DataTable.Cell className="text-text-dim">{customer.phone ?? "—"}</DataTable.Cell>
+                <DataTable.Cell>
                   {customer.customer_type_id
                     ? (typeNameById.get(customer.customer_type_id) ?? "—")
                     : "—"}
-                </td>
-                <td className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onEdit(customer)}
-                    className="aura-btn-secondary px-3 py-1"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm(`¿Borrar "${customer.name}"?`)) {
-                        deleteMutation.mutate(customer.id);
-                      }
-                    }}
-                    disabled={deleteMutation.isPending}
-                    className="aura-btn-danger px-3 py-1"
-                  >
-                    Borrar
-                  </button>
-                </td>
-              </tr>
+                </DataTable.Cell>
+                <DataTable.Cell>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" className="px-2.5 py-1" onClick={() => onEdit(customer)}>
+                      Editar
+                    </Button>
+                    <Button
+                      variant="danger"
+                      className="px-2.5 py-1"
+                      disabled={deleteMutation.isPending}
+                      onClick={() => {
+                        if (window.confirm(`¿Borrar "${customer.name}"?`)) {
+                          deleteMutation.mutate(customer.id);
+                        }
+                      }}
+                    >
+                      Borrar
+                    </Button>
+                  </div>
+                </DataTable.Cell>
+              </DataTable.Row>
             ))}
             {customersQuery.data?.length === 0 && (
-              <tr>
-                <td colSpan={5} className="text-center text-neutral-400">
+              <DataTable.Row>
+                <DataTable.Cell className="text-center text-text-faint" colSpan={5}>
                   Sin clientes todavía.
-                </td>
-              </tr>
+                </DataTable.Cell>
+              </DataTable.Row>
             )}
-          </tbody>
-        </table>
+          </DataTable.Body>
+        </DataTable.Root>
       </div>
       {deleteMutation.isError && (
-        <p role="alert" className="aura-alert">
+        <p role="alert" className="rounded-base border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">
           {(deleteMutation.error as Error).message}
         </p>
       )}
-    </div>
+    </Card>
   );
 }

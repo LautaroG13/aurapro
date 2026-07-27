@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { Button, DataTable, Input, Select } from "@/components/ui";
 import { createCustomerPayment, getCustomerAccount } from "@/lib/api/treasury";
 import type { CustomerRead } from "@/lib/api/types";
 
@@ -38,56 +39,58 @@ export function CustomerAccount({ customer }: CustomerAccountProps) {
   });
 
   return (
-    <div className="flex flex-col gap-3 border-t border-neutral-200 pt-4">
-      <h3>Cuenta corriente</h3>
+    <div className="flex flex-col gap-3 border-t border-border pt-4">
+      <h3 className="font-display text-sm font-semibold text-text">Cuenta corriente</h3>
 
-      {accountQuery.isLoading && <p className="text-sm text-neutral-500">Cargando...</p>}
+      {accountQuery.isLoading && <p className="font-body text-sm text-text-dim">Cargando...</p>}
       {accountQuery.isError && (
-        <p role="alert" className="aura-alert">
+        <p role="alert" className="rounded-base border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">
           {(accountQuery.error as Error).message}
         </p>
       )}
 
       {accountQuery.data && (
         <>
-          <p className="text-sm">
+          <p className="font-body text-sm text-text">
             Saldo:{" "}
-            <strong className={accountQuery.data.balance > 0 ? "text-red-600" : "text-green-600"}>
+            <strong className={accountQuery.data.balance > 0 ? "font-mono text-danger" : "font-mono text-success"}>
               ${accountQuery.data.balance.toFixed(2)}
             </strong>
             {customer.credit_limit != null && (
-              <span className="text-neutral-500"> — límite: ${customer.credit_limit.toFixed(2)}</span>
+              <span className="text-text-dim"> — límite: ${customer.credit_limit.toFixed(2)}</span>
             )}
           </p>
 
           <div className="overflow-x-auto">
-            <table className="aura-table">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Tipo</th>
-                  <th>Monto</th>
-                  <th>Descripción</th>
-                </tr>
-              </thead>
-              <tbody>
+            <DataTable.Root>
+              <DataTable.Head>
+                <DataTable.Row className="hover:bg-transparent">
+                  <DataTable.HeaderCell>Fecha</DataTable.HeaderCell>
+                  <DataTable.HeaderCell>Tipo</DataTable.HeaderCell>
+                  <DataTable.HeaderCell align="right">Monto</DataTable.HeaderCell>
+                  <DataTable.HeaderCell>Descripción</DataTable.HeaderCell>
+                </DataTable.Row>
+              </DataTable.Head>
+              <DataTable.Body>
                 {accountQuery.data.movements.map((movement) => (
-                  <tr key={movement.id}>
-                    <td>{new Date(movement.created_at).toLocaleDateString()}</td>
-                    <td>{movement.type === "DEBIT" ? "Debe" : "Haber"}</td>
-                    <td>${movement.amount.toFixed(2)}</td>
-                    <td>{movement.description ?? "—"}</td>
-                  </tr>
+                  <DataTable.Row key={movement.id}>
+                    <DataTable.Cell className="text-text-dim">
+                      {new Date(movement.created_at).toLocaleDateString()}
+                    </DataTable.Cell>
+                    <DataTable.Cell>{movement.type === "DEBIT" ? "Debe" : "Haber"}</DataTable.Cell>
+                    <DataTable.Cell numeric>${movement.amount.toFixed(2)}</DataTable.Cell>
+                    <DataTable.Cell className="text-text-dim">{movement.description ?? "—"}</DataTable.Cell>
+                  </DataTable.Row>
                 ))}
                 {accountQuery.data.movements.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="text-center text-neutral-400">
+                  <DataTable.Row>
+                    <DataTable.Cell className="text-center text-text-faint" colSpan={4}>
                       Sin movimientos todavía.
-                    </td>
-                  </tr>
+                    </DataTable.Cell>
+                  </DataTable.Row>
                 )}
-              </tbody>
-            </table>
+              </DataTable.Body>
+            </DataTable.Root>
           </div>
         </>
       )}
@@ -97,51 +100,44 @@ export function CustomerAccount({ customer }: CustomerAccountProps) {
           disparar el submit equivocado. Mismo patrón que
           ProductVariants (botones type="button" + onClick). */}
       <div className="flex flex-wrap items-end gap-2">
-        <label className="aura-label">
+        <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
           Registrar cobro
-          <input
+          <Input
+            className="w-32 font-mono"
             type="number"
             min="0.01"
             step="0.01"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="aura-input w-32"
           />
         </label>
-        <label className="aura-label">
+        <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
           Medio
-          <select
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
-            className="aura-input"
-          >
+          <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
             {PAYMENT_METHODS.map((method) => (
               <option key={method} value={method}>
                 {method}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
-        <label className="aura-label">
+        <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
           Descripción (opcional)
-          <input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="aura-input"
-          />
+          <Input value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
-        <button
+        <Button
           type="button"
-          onClick={() => paymentMutation.mutate()}
+          variant="primary"
+          className="px-3 py-2"
           disabled={paymentMutation.isPending || amount === ""}
-          className="aura-btn-primary px-3 py-2"
+          onClick={() => paymentMutation.mutate()}
         >
           {paymentMutation.isPending ? "Guardando..." : "Registrar"}
-        </button>
+        </Button>
       </div>
 
       {paymentMutation.isError && (
-        <p role="alert" className="aura-alert">
+        <p role="alert" className="rounded-base border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">
           {(paymentMutation.error as Error).message}
         </p>
       )}

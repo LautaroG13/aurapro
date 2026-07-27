@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { Button, Card, DataTable, StatusDot } from "@/components/ui";
 import { deleteProduct, listProducts } from "@/lib/api/products";
 import type { ProductRead } from "@/lib/api/types";
 
@@ -20,83 +21,90 @@ export function ProductsTable({ onEdit }: ProductsTableProps) {
 
   if (productsQuery.isLoading) {
     return (
-      <div className="aura-card">
-        <p className="text-sm text-neutral-500">Cargando productos...</p>
-      </div>
+      <Card className="p-5">
+        <p className="font-body text-sm text-text-dim">Cargando productos...</p>
+      </Card>
     );
   }
 
   if (productsQuery.isError) {
     return (
-      <div className="aura-card">
-        <p role="alert" className="aura-alert">
+      <Card className="p-5">
+        <p role="alert" className="rounded-base border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">
           {(productsQuery.error as Error).message}
         </p>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="aura-card flex flex-col gap-4">
-      <h2>Productos</h2>
+    <Card className="flex flex-col gap-4 p-5">
+      <h2 className="font-display text-[14.5px] font-semibold text-text">Productos</h2>
       <div className="overflow-x-auto">
-        <table className="aura-table">
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>SKU</th>
-              <th>Precio</th>
-              <th>Stock</th>
-              <th>Estado</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
+        <DataTable.Root>
+          <DataTable.Head>
+            <DataTable.Row className="hover:bg-transparent">
+              <DataTable.HeaderCell>Nombre</DataTable.HeaderCell>
+              <DataTable.HeaderCell>SKU</DataTable.HeaderCell>
+              <DataTable.HeaderCell align="right">Precio</DataTable.HeaderCell>
+              <DataTable.HeaderCell align="right">Stock</DataTable.HeaderCell>
+              <DataTable.HeaderCell>Estado</DataTable.HeaderCell>
+              <DataTable.HeaderCell></DataTable.HeaderCell>
+            </DataTable.Row>
+          </DataTable.Head>
+          <DataTable.Body>
             {productsQuery.data?.map((product) => (
-              <tr key={product.id} className={product.is_active ? "" : "text-neutral-400"}>
-                <td>{product.name}</td>
-                <td>{product.sku ?? "—"}</td>
-                <td>${product.price.toFixed(2)}</td>
-                <td>{product.current_stock}</td>
-                <td>{product.is_active ? "Activo" : "Inactivo"}</td>
-                <td className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onEdit(product)}
-                    className="aura-btn-secondary px-3 py-1"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm(`¿Borrar "${product.name}"?`)) {
-                        deleteMutation.mutate(product.id);
-                      }
-                    }}
-                    disabled={deleteMutation.isPending}
-                    className="aura-btn-danger px-3 py-1"
-                  >
-                    Borrar
-                  </button>
-                </td>
-              </tr>
+              <DataTable.Row key={product.id}>
+                <DataTable.Cell className={product.is_active ? "" : "text-text-faint"}>
+                  {product.name}
+                </DataTable.Cell>
+                <DataTable.Cell className="font-mono text-[12.5px] text-text-dim">
+                  {product.sku ?? "—"}
+                </DataTable.Cell>
+                <DataTable.Cell numeric>${product.price.toFixed(2)}</DataTable.Cell>
+                <DataTable.Cell numeric>{product.current_stock}</DataTable.Cell>
+                <DataTable.Cell>
+                  <span className="flex items-center gap-1.5">
+                    <StatusDot status={product.current_stock > 0 ? "ok" : "out"} />
+                    {product.is_active ? "Activo" : "Inactivo"}
+                  </span>
+                </DataTable.Cell>
+                <DataTable.Cell>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" className="px-2.5 py-1" onClick={() => onEdit(product)}>
+                      Editar
+                    </Button>
+                    <Button
+                      variant="danger"
+                      className="px-2.5 py-1"
+                      disabled={deleteMutation.isPending}
+                      onClick={() => {
+                        if (window.confirm(`¿Borrar "${product.name}"?`)) {
+                          deleteMutation.mutate(product.id);
+                        }
+                      }}
+                    >
+                      Borrar
+                    </Button>
+                  </div>
+                </DataTable.Cell>
+              </DataTable.Row>
             ))}
             {productsQuery.data?.length === 0 && (
-              <tr>
-                <td colSpan={6} className="text-center text-neutral-400">
+              <DataTable.Row>
+                <DataTable.Cell className="text-center text-text-faint" colSpan={6}>
                   Sin productos todavía.
-                </td>
-              </tr>
+                </DataTable.Cell>
+              </DataTable.Row>
             )}
-          </tbody>
-        </table>
+          </DataTable.Body>
+        </DataTable.Root>
       </div>
       {deleteMutation.isError && (
-        <p role="alert" className="aura-alert">
+        <p role="alert" className="rounded-base border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">
           {(deleteMutation.error as Error).message}
         </p>
       )}
-    </div>
+    </Card>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { ProductForm } from "@/components/ProductForm";
 import { ProductsTable } from "@/components/ProductsTable";
+import { Button } from "@/components/ui";
 import type { ProductRead } from "@/lib/api/types";
 
 type FormTarget = ProductRead | "new" | null;
@@ -13,16 +14,14 @@ export default function ProductsPage() {
 
   return (
     <>
-      <h1>AuraPro — Productos</h1>
+      <h1 className="font-display text-xl font-semibold tracking-tight text-text">
+        AuraPro — Productos
+      </h1>
 
       {formTarget === null ? (
-        <button
-          type="button"
-          onClick={() => setFormTarget("new")}
-          className="aura-btn-primary self-start"
-        >
+        <Button variant="primary" className="self-start" onClick={() => setFormTarget("new")}>
           Nuevo producto
-        </button>
+        </Button>
       ) : (
         <ProductForm
           key={formTarget === "new" ? "new" : formTarget.id}
