@@ -37,7 +37,9 @@ export function SaleForm() {
   const [selectedVariantByProduct, setSelectedVariantByProduct] = useState<Record<string, string>>({});
 
   const filteredProducts = useMemo(() => {
-    const products = productsQuery.data ?? [];
+    // Inactivo = dado de baja, no debe ofrecerse para vender (sigue
+    // existiendo para historial/edición en la pantalla de Productos).
+    const products = (productsQuery.data ?? []).filter((p) => p.is_active);
     const query = productSearch.trim().toLowerCase();
     if (!query) return products;
     return products.filter((p) => p.name.toLowerCase().includes(query));

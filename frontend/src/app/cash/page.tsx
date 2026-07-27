@@ -3,7 +3,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { addCashMovement, closeCashSession, getCurrentCashSession, openCashSession } from "@/lib/api/treasury";
+import {
+  addCashMovement,
+  closeCashSession,
+  getCashSessionSalesSummary,
+  getCurrentCashSession,
+  openCashSession,
+} from "@/lib/api/treasury";
 
 export default function CashPage() {
   const queryClient = useQueryClient();
@@ -14,6 +20,12 @@ export default function CashPage() {
   const [movementDescription, setMovementDescription] = useState("");
 
   const sessionQuery = useQuery({ queryKey: ["currentCashSession"], queryFn: getCurrentCashSession });
+  const session = sessionQuery.data;
+  const salesSummaryQuery = useQuery({
+    queryKey: ["cashSessionSalesSummary", session?.id],
+    queryFn: () => getCashSessionSalesSummary(session!.id),
+    enabled: session != null,
+  });
 
   const openMutation = useMutation({
     mutationFn: () => openCashSession({ opening_amount: Number(openingAmount) }),
@@ -50,7 +62,6 @@ export default function CashPage() {
     },
   });
 
-  const session = sessionQuery.data;
   const closedSession = closeMutation.isSuccess ? closeMutation.data : null;
 
   return (
@@ -109,6 +120,40 @@ export default function CashPage() {
             <p className="text-sm text-neutral-500">
               Apertura: ${session.opening_amount.toFixed(2)} — {new Date(session.created_at).toLocaleString()}
             </p>
+
+            <div className="flex flex-col gap-2">
+              <h3>Ventas por medio de pago</h3>
+              <p className="text-xs text-neutral-500">
+                Todas las ventas del turno, no solo el efectivo que pasó por esta caja.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="aura-table">
+                  <thead>
+                    <tr>
+                      <th>Medio</th>
+                      <th>Cantidad</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {salesSummaryQuery.data?.map((row) => (
+                      <tr key={row.payment_method}>
+                        <td>{row.payment_method}</td>
+                        <td>{row.count}</td>
+                        <td>${row.total_amount.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                    {salesSummaryQuery.data?.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="text-center text-neutral-400">
+                          Sin ventas todavía en este turno.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
             <div className="overflow-x-auto">
               <table className="aura-table">

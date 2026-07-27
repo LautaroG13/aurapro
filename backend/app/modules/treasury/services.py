@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.customers.models import Customer
+from app.modules.sales.models import Sale
 from app.modules.treasury.models import (
     AccountMovement,
     AccountMovementType,
@@ -209,6 +210,25 @@ async def add_cash_movement(
     await db.commit()
     await db.refresh(movement)
     return movement
+
+
+async def get_cash_session_sales_summary(db: AsyncSession, session_id: UUID) -> list[dict]:
+    """Ventas del tenant creadas durante la ventana de esta caja
+    (apertura -> cierre, o apertura -> ahora si sigue abierta),
+    agrupadas por payment_method. A diferencia de CashMovement (que
+    solo trackea efectivo físico), este reporte cubre TODOS los medios
+    de pago -- tarjeta y transferencia incluidos."""
+    session = await _get_cash_session(db, session_id)
+    window_end = session.closed_at or datetime.now(timezone.utc)
+    result = await db.execute(
+        select(Sale.payment_method, func.count(Sale.id), func.coalesce(func.sum(Sale.total_amount), 0))
+        .where(Sale.created_at >= session.created_at, Sale.created_at <= window_end)
+        .group_by(Sale.payment_method)
+    )
+    return [
+        {"payment_method": payment_method, "count": count, "total_amount": float(total)}
+        for payment_method, count, total in result.all()
+    ]
 
 
 async def close_cash_session(

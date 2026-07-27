@@ -7,6 +7,7 @@ import type {
   CashSessionRead,
   CustomerAccountRead,
   CustomerPaymentCreate,
+  PaymentMethodSummary,
 } from "./types";
 
 export async function getCustomerAccount(customerId: string): Promise<CustomerAccountRead> {
@@ -42,6 +43,10 @@ export async function closeCashSession(
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function getCashSessionSalesSummary(sessionId: string): Promise<PaymentMethodSummary[]> {
+  return apiFetch<PaymentMethodSummary[]>(`/api/v1/treasury/cash/sessions/${sessionId}/sales-summary`);
 }
 
 export async function addCashMovement(

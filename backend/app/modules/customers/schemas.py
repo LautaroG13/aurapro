@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.modules.customers.models import CustomerTaxStatus
+
 
 class CustomerTypeCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -29,6 +31,8 @@ class CustomerCreate(BaseModel):
     credit_limit: float | None = Field(default=None, ge=0)
     default_salesperson_id: UUID | None = None
     customer_type_id: UUID | None = None
+    cuit: str | None = None
+    tax_status: CustomerTaxStatus | None = None
 
 
 class CustomerUpdate(BaseModel):
@@ -41,6 +45,8 @@ class CustomerUpdate(BaseModel):
     credit_limit: float | None = Field(default=None, ge=0)
     default_salesperson_id: UUID | None = None
     customer_type_id: UUID | None = None
+    cuit: str | None = None
+    tax_status: CustomerTaxStatus | None = None
 
 
 class CustomerRead(BaseModel):
@@ -55,4 +61,6 @@ class CustomerRead(BaseModel):
     credit_limit: float | None
     default_salesperson_id: UUID | None
     customer_type_id: UUID | None
+    cuit: str | None
+    tax_status: CustomerTaxStatus | None
     created_at: datetime

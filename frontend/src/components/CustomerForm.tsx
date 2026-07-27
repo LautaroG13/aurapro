@@ -5,9 +5,11 @@ import { useState } from "react";
 
 import { listSalespeople } from "@/lib/api/auth";
 import { createCustomer, createCustomerType, listCustomerTypes, updateCustomer } from "@/lib/api/customers";
-import type { CustomerRead } from "@/lib/api/types";
+import type { CustomerRead, CustomerTaxStatus } from "@/lib/api/types";
 
 import { CustomerAccount } from "./CustomerAccount";
+
+const TAX_STATUSES: CustomerTaxStatus[] = ["RESPONSABLE_INSCRIPTO", "MONOTRIBUTO", "EXENTO"];
 
 interface CustomerFormProps {
   editingCustomer: CustomerRead | null;
@@ -27,6 +29,8 @@ export function CustomerForm({ editingCustomer, onDone }: CustomerFormProps) {
     editingCustomer?.default_salesperson_id ?? ""
   );
   const [customerTypeId, setCustomerTypeId] = useState(editingCustomer?.customer_type_id ?? "");
+  const [cuit, setCuit] = useState(editingCustomer?.cuit ?? "");
+  const [taxStatus, setTaxStatus] = useState<CustomerTaxStatus | "">(editingCustomer?.tax_status ?? "");
 
   const [isCreatingType, setIsCreatingType] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
@@ -44,6 +48,8 @@ export function CustomerForm({ editingCustomer, onDone }: CustomerFormProps) {
         credit_limit: creditLimit ? Number(creditLimit) : null,
         default_salesperson_id: defaultSalespersonId || null,
         customer_type_id: customerTypeId || null,
+        cuit: cuit || null,
+        tax_status: taxStatus || null,
       };
       return editingCustomer ? updateCustomer(editingCustomer.id, payload) : createCustomer(payload);
     },
@@ -96,6 +102,27 @@ export function CustomerForm({ editingCustomer, onDone }: CustomerFormProps) {
       <label className="aura-label">
         Dirección
         <input value={address} onChange={(e) => setAddress(e.target.value)} className="aura-input" />
+      </label>
+
+      <label className="aura-label">
+        CUIT
+        <input value={cuit} onChange={(e) => setCuit(e.target.value)} className="aura-input" />
+      </label>
+
+      <label className="aura-label">
+        Situación fiscal
+        <select
+          value={taxStatus}
+          onChange={(e) => setTaxStatus(e.target.value as CustomerTaxStatus | "")}
+          className="aura-input"
+        >
+          <option value="">Sin especificar</option>
+          {TAX_STATUSES.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
+        </select>
       </label>
 
       <label className="aura-label">

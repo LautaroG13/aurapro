@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,31 +11,45 @@ from app.db.tenant_session import get_tenant_db
 from app.modules.identity.dependencies import CurrentUser, get_current_user, require_role
 from app.modules.identity.models import Tenant, User, UserRole
 from app.modules.identity.schemas import (
+    ForgotPasswordRequest,
     InvitationAccept,
     InvitationCreate,
     InvitationPreview,
     InvitationRead,
+    ResetPasswordRequest,
     SalespersonRead,
     TenantRegister,
     TokenResponse,
     UserLogin,
     UserRead,
+    UserUpdate,
 )
 from app.modules.identity.services import (
+    CannotDeleteLastAdminError,
+    CannotDeleteSelfError,
+    CannotDemoteLastAdminError,
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
     InvitationAlreadyAcceptedError,
     InvitationExpiredError,
     InvitationNotFoundError,
+    PasswordResetAlreadyUsedError,
+    PasswordResetExpiredError,
+    PasswordResetNotFoundError,
     TenantSuspendedError,
+    UserNotFoundError,
     accept_invitation,
     authenticate_user,
     create_invitation,
+    delete_user,
     get_invitation_preview,
     issue_token_for_user,
     list_invitations,
     list_salespeople,
     register_tenant,
+    request_password_reset,
+    reset_password,
+    update_user,
 )
 
 router = APIRouter()
@@ -65,6 +81,49 @@ async def login(payload: UserLogin, db: AsyncSession = Depends(get_async_db)) ->
     return TokenResponse(access_token=issue_token_for_user(user))
 
 
+@router.post("/forgot-password", status_code=202)
+async def forgot_password(payload: ForgotPasswordRequest, db: AsyncSession = Depends(get_async_db)) -> None:
+    """Siempre responde 202, exista o no el email -- no le confirmamos
+    a un desconocido si una dirección está registrada en el sistema."""
+    result = await request_password_reset(db, payload.email)
+    if result is None:
+        return
+
+    user, token = result
+    reset_link = f"{settings.frontend_url}/reset-password/{token}"
+    try:
+        await send_email(
+            to=user.email,
+            subject="Recuperar tu contraseña en AuraPro",
+            html=(
+                "<p>Pediste recuperar tu contraseña en AuraPro.</p>"
+                f'<p><a href="{reset_link}">Elegir una contraseña nueva</a></p>'
+                "<p>Este link expira en 1 hora. Si no fuiste vos, ignorá este email.</p>"
+            ),
+        )
+    except (EmailNotConfiguredError, EmailSendError):
+        # No se propaga como error HTTP: el token ya quedó creado y el
+        # response sigue siendo genérico (202) para no filtrar si el
+        # email existe. Si el envío falla, el usuario simplemente no
+        # recibe el link -- mismo comportamiento observable que "no
+        # existe ese email" desde afuera.
+        pass
+
+
+@router.post("/reset-password/{token}", response_model=TokenResponse, status_code=201)
+async def reset_password_endpoint(
+    token: str, payload: ResetPasswordRequest, db: AsyncSession = Depends(get_async_db)
+) -> TokenResponse:
+    try:
+        user = await reset_password(db, token, payload.password)
+    except PasswordResetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (PasswordResetExpiredError, PasswordResetAlreadyUsedError) as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+
+    return TokenResponse(access_token=issue_token_for_user(user))
+
+
 @router.get("/me", response_model=UserRead)
 async def me(
     current_user: CurrentUser = Depends(get_current_user),
@@ -86,6 +145,38 @@ async def list_users(
     del tenant del token, nunca los de otro."""
     result = await db.execute(select(User))
     return [UserRead.model_validate(u) for u in result.scalars().all()]
+
+
+@router.patch("/users/{user_id}", response_model=UserRead)
+async def update_user_endpoint(
+    user_id: UUID,
+    payload: UserUpdate,
+    _current_user: CurrentUser = Depends(require_role(UserRole.ADMIN.value)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> UserRead:
+    try:
+        user = await update_user(db, user_id, payload)
+    except UserNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except CannotDemoteLastAdminError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return UserRead.model_validate(user)
+
+
+@router.delete("/users/{user_id}", status_code=204)
+async def delete_user_endpoint(
+    user_id: UUID,
+    current_user: CurrentUser = Depends(require_role(UserRole.ADMIN.value)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> None:
+    try:
+        await delete_user(db, user_id, current_user.user_id)
+    except UserNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except CannotDeleteSelfError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except CannotDeleteLastAdminError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("/salespeople", response_model=list[SalespersonRead])

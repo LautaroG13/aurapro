@@ -1,9 +1,9 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { createProduct, updateProduct } from "@/lib/api/products";
+import { createCategory, createProduct, listCategories, updateProduct } from "@/lib/api/products";
 import type { ProductRead } from "@/lib/api/types";
 
 import { ProductVariants } from "./ProductVariants";
@@ -22,10 +22,16 @@ export function ProductForm({ editingProduct, onDone }: ProductFormProps) {
   const [currentStock, setCurrentStock] = useState(
     editingProduct ? String(editingProduct.current_stock) : "0"
   );
-  const [category, setCategory] = useState(editingProduct?.category ?? "");
+  const [categoryId, setCategoryId] = useState(editingProduct?.category_id ?? "");
   const [sku, setSku] = useState(editingProduct?.sku ?? "");
   const [barcode, setBarcode] = useState(editingProduct?.barcode ?? "");
   const [imageUrl, setImageUrl] = useState(editingProduct?.image_url ?? "");
+  const [isActive, setIsActive] = useState(editingProduct?.is_active ?? true);
+
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+
+  const categoriesQuery = useQuery({ queryKey: ["productCategories"], queryFn: listCategories });
 
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -35,16 +41,27 @@ export function ProductForm({ editingProduct, onDone }: ProductFormProps) {
         price: Number(price),
         cost: cost ? Number(cost) : null,
         current_stock: Number(currentStock),
-        category: category || null,
+        category_id: categoryId || null,
         sku: sku || null,
         barcode: barcode || null,
         image_url: imageUrl || null,
+        is_active: isActive,
       };
       return editingProduct ? updateProduct(editingProduct.id, payload) : createProduct(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       onDone();
+    },
+  });
+
+  const createCategoryMutation = useMutation({
+    mutationFn: () => createCategory({ name: newCategoryName }),
+    onSuccess: (createdCategory) => {
+      queryClient.invalidateQueries({ queryKey: ["productCategories"] });
+      setCategoryId(createdCategory.id);
+      setNewCategoryName("");
+      setIsCreatingCategory(false);
     },
   });
 
@@ -110,10 +127,60 @@ export function ProductForm({ editingProduct, onDone }: ProductFormProps) {
         />
       </label>
 
-      <label className="aura-label">
-        Categoría
-        <input value={category} onChange={(e) => setCategory(e.target.value)} className="aura-input" />
-      </label>
+      <div className="flex flex-col gap-2">
+        <label className="aura-label">
+          Categoría
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="aura-input"
+          >
+            <option value="">Sin categoría</option>
+            {categoriesQuery.data?.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {isCreatingCategory ? (
+          <div className="flex gap-2">
+            <input
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Nombre (ej. Remeras)"
+              className="aura-input"
+            />
+            <button
+              type="button"
+              disabled={createCategoryMutation.isPending || newCategoryName.trim() === ""}
+              onClick={() => createCategoryMutation.mutate()}
+              className="aura-btn-primary px-3 py-1"
+            >
+              Crear
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCreatingCategory(false);
+                setNewCategoryName("");
+              }}
+              className="aura-btn-secondary px-3 py-1"
+            >
+              Cancelar
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsCreatingCategory(true)}
+            className="aura-btn-secondary self-start px-2 py-1 text-sm"
+          >
+            + Nueva categoría
+          </button>
+        )}
+      </div>
 
       <label className="aura-label">
         SKU
@@ -128,6 +195,11 @@ export function ProductForm({ editingProduct, onDone }: ProductFormProps) {
       <label className="aura-label">
         URL de imagen
         <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="aura-input" />
+      </label>
+
+      <label className="flex items-center gap-2 text-sm font-medium text-neutral-700">
+        <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+        Activo (visible para vender)
       </label>
 
       <div className="flex gap-2">
