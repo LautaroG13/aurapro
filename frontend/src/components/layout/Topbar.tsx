@@ -13,6 +13,7 @@ const PAGE_TITLES: Array<[string, string]> = [
   ["/sales", "Ventas"],
   ["/cash", "Caja"],
   ["/team", "Equipo"],
+  ["/integrations", "Integraciones"],
   ["/admin", "Admin"],
 ];
 

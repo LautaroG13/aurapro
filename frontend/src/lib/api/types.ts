@@ -502,3 +502,20 @@ export interface GlobalStats {
   total_sales: number;
   total_revenue: number;
 }
+
+/**
+ * Espeja backend/app/modules/integrations/schemas.py::IntegrationConfigUpsert.
+ * Write-only: config viaja acá pero nunca vuelve en una respuesta.
+ */
+export interface IntegrationConfigUpsert {
+  config: Record<string, string>;
+}
+
+/**
+ * Espeja backend/app/modules/integrations/schemas.py::IntegrationRead.
+ */
+export interface IntegrationRead {
+  provider: string;
+  config_keys: string[];
+  updated_at: string;
+}

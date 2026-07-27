@@ -108,6 +108,7 @@ export function SaleForm() {
       // servidor (aunque el descuento real lo haga el worker en
       // background de forma asíncrona, current_stock no se mueve acá)
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
     },
   });
 

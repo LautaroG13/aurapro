@@ -8,6 +8,10 @@ export async function createSale(payload: SaleCreate): Promise<SaleRead> {
   });
 }
 
+export async function listSales(): Promise<SaleRead[]> {
+  return apiFetch<SaleRead[]>("/api/v1/sales");
+}
+
 // Dispara la descarga del PDF en el navegador -- el link no puede ser
 // un <a href> directo porque el endpoint requiere el Bearer token, así
 // que se trae como blob y se simula el click sobre un <a> temporal.
