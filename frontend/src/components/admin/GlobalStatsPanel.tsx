@@ -14,7 +14,7 @@ export function GlobalStatsPanel() {
   if (statsQuery.isLoading) {
     return (
       <div className="aura-card">
-        <p className="text-sm text-neutral-500">Cargando estadísticas...</p>
+        <p className="text-sm text-text-dim">Cargando estadísticas...</p>
       </div>
     );
   }
@@ -46,9 +46,9 @@ export function GlobalStatsPanel() {
       <h2>Estadísticas globales</h2>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {entries.map(([label, value]) => (
-          <div key={label} className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">{label}</p>
-            <p className="text-lg font-semibold text-neutral-900">{value}</p>
+          <div key={label} className="rounded-md border border-border bg-surface-2 p-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-text-dim">{label}</p>
+            <p className="font-mono text-lg font-semibold text-text">{value}</p>
           </div>
         ))}
       </div>

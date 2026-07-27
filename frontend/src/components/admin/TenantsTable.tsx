@@ -19,7 +19,7 @@ export function TenantsTable() {
   if (tenantsQuery.isLoading) {
     return (
       <div className="aura-card">
-        <p className="text-sm text-neutral-500">Cargando tenants...</p>
+        <p className="text-sm text-text-dim">Cargando tenants...</p>
       </div>
     );
   }
@@ -58,8 +58,8 @@ export function TenantsTable() {
                     className={
                       "rounded-full px-2 py-0.5 text-xs font-medium " +
                       (tenant.is_active
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-neutral-100 text-neutral-500")
+                        ? "bg-success-bg text-success"
+                        : "bg-surface-2 text-text-dim")
                     }
                   >
                     {tenant.is_active ? "Activo" : "Suspendido"}
@@ -91,7 +91,7 @@ export function TenantsTable() {
             ))}
             {tenantsQuery.data?.length === 0 && (
               <tr>
-                <td colSpan={5} className="text-center text-neutral-400">
+                <td colSpan={5} className="text-center text-text-faint">
                   Sin tenants todavía.
                 </td>
               </tr>

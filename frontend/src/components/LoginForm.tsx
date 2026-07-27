@@ -20,7 +20,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   });
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-50 p-6">
+    <div className="flex min-h-screen items-center justify-center bg-bg p-6">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -30,7 +30,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
       >
         <div>
           <h1 className="mb-1">AuraPro</h1>
-          <h2 className="font-normal text-neutral-500">Iniciar sesión</h2>
+          <h2 className="font-normal text-text-dim">Iniciar sesión</h2>
         </div>
 
         <label className="aura-label">
@@ -55,7 +55,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
           />
         </label>
 
-        <Link href="/forgot-password" className="text-sm text-neutral-500 hover:text-neutral-900 hover:underline">
+        <Link href="/forgot-password" className="text-sm text-text-dim hover:text-text hover:underline">
           ¿Olvidaste tu contraseña?
         </Link>
 

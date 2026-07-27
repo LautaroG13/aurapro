@@ -19,11 +19,6 @@ const PUBLIC_PATH_PREFIXES = ["/invite/", "/forgot-password", "/reset-password/"
 // centrada de arriba, y tampoco requiere login.
 const PUBLIC_STANDALONE_PATH_PREFIXES = ["/design-system"];
 
-// Fase 2: páginas ya migradas al sistema de diseño oscuro. El resto
-// (Ventas, Caja, Equipo, Admin, Inicio) sigue con el fondo claro de
-// siempre hasta que se migren en una fase futura.
-const DARK_MODE_PATH_PREFIXES = ["/products", "/customers"];
-
 /**
  * Shell persistente de la app: sidebar + área de contenido.
  * El gate de autenticación lo sigue resolviendo AuthGate tal cual --
@@ -39,7 +34,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   }
 
   if (PUBLIC_PATH_PREFIXES.some((prefix) => pathname?.startsWith(prefix))) {
-    return <div className="flex min-h-screen items-center justify-center bg-neutral-50 p-6">{children}</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-bg p-6">{children}</div>;
   }
 
   return (
@@ -50,25 +45,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
 }
 
 function AuthenticatedShell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
   const { isSuperadmin, isAdmin } = useMemo(() => {
     const token = getStoredToken();
     const payload = token ? decodeToken(token) : null;
     return { isSuperadmin: Boolean(payload?.is_superadmin), isAdmin: payload?.role === "ADMIN" };
   }, []);
 
-  // El fondo oscuro de <main> se activa solo para páginas ya migradas:
-  // el resto (Ventas, Caja, Equipo, Admin, Inicio) renderiza <h1>/texto
-  // suelto con el color oscuro de siempre -- pintar <main> de oscuro ahí
-  // los dejaría con texto negro sobre fondo negro hasta que se migren.
-  const isDarkPage = DARK_MODE_PATH_PREFIXES.some((prefix) => pathname?.startsWith(prefix));
-
   return (
     <div className="flex min-h-screen">
       <Sidebar isSuperadmin={isSuperadmin} isAdmin={isAdmin} />
       <div className="flex flex-1 flex-col">
         <Topbar />
-        <main className={"flex-1 overflow-y-auto p-8" + (isDarkPage ? " bg-bg" : "")}>
+        <main className="flex-1 overflow-y-auto bg-bg p-8">
           <div className="mx-auto flex max-w-4xl flex-col gap-6">{children}</div>
         </main>
       </div>

@@ -84,7 +84,7 @@ export function CreateTenantForm() {
         </p>
       )}
       {createMutation.isSuccess && (
-        <p className="text-sm text-emerald-700">Tenant creado: {createMutation.data.name}</p>
+        <p className="text-sm text-success">Tenant creado: {createMutation.data.name}</p>
       )}
     </form>
   );

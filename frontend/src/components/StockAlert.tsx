@@ -19,7 +19,7 @@ export function StockAlert({ productId, tenantId }: StockAlertProps) {
   if (isLoading) {
     return (
       <div className="aura-card">
-        <p className="text-sm text-neutral-500">Calculando pronóstico de stock...</p>
+        <p className="text-sm text-text-dim">Calculando pronóstico de stock...</p>
       </div>
     );
   }
@@ -41,13 +41,13 @@ export function StockAlert({ productId, tenantId }: StockAlertProps) {
   return (
     <div className="aura-card flex flex-col gap-1">
       <h3>Pronóstico de stock</h3>
-      <p className="text-sm text-neutral-500">Producto: {data.product_id}</p>
-      <p className="text-sm text-neutral-700">
+      <p className="text-sm text-text-dim">Producto: {data.product_id}</p>
+      <p className="text-sm text-text">
         {data.days_until_out_of_stock === null
           ? "Sin quiebre de stock proyectado en el horizonte del pronóstico"
           : `Quiebre de stock estimado en ${data.days_until_out_of_stock} día(s)`}
       </p>
-      <p className="text-sm text-neutral-500">Confianza: {(data.confidence * 100).toFixed(0)}%</p>
+      <p className="text-sm text-text-dim">Confianza: {(data.confidence * 100).toFixed(0)}%</p>
     </div>
   );
 }

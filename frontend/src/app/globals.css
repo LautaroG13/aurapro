@@ -3,13 +3,8 @@
 @theme {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  /* --- Sistema de diseño dark mode (Fase 1, 2026-07-27) ---
-     Aditivo a propósito: no se tocó --font-sans ni los estilos de
-     body/html de abajo, así que las páginas actuales (Productos,
-     Clientes, etc.) se ven exactamente igual que antes. Estos tokens
-     los consumen únicamente components/ui/* y /design-system hasta
-     que una fase futura migre el resto de la app. Nombres calcados de
-     AuraPro_Design_System_Dark.md, sección 2. */
+  /* --- Sistema de diseño dark mode ---
+     Nombres calcados de AuraPro_Design_System_Dark.md, sección 2. */
   --color-bg: #14181f;
   --color-surface: #1c222c;
   --color-surface-2: #242b37;
@@ -42,74 +37,74 @@
 
 @layer base {
   html {
-    color-scheme: light;
+    color-scheme: dark;
   }
 
   body {
-    @apply bg-neutral-50 text-neutral-900 antialiased;
+    @apply bg-bg text-text antialiased;
   }
 
   h1 {
-    @apply text-xl font-semibold tracking-tight text-neutral-900;
+    @apply font-display text-xl font-semibold tracking-tight text-text;
   }
 
   h2 {
-    @apply text-base font-semibold text-neutral-900;
+    @apply font-display text-base font-semibold text-text;
   }
 
   h3 {
-    @apply text-sm font-semibold text-neutral-700;
+    @apply font-display text-sm font-semibold text-text;
   }
 }
 
 @utility aura-btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
+  @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 font-body text-sm font-medium
     transition-colors disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 @layer components {
   /* Contenedor tipo tarjeta usado por los paneles de cada sección */
   .aura-card {
-    @apply rounded-xl border border-neutral-200 bg-white p-5 shadow-sm;
+    @apply rounded-base border border-border bg-surface p-5;
   }
 
   .aura-label {
-    @apply flex flex-col gap-1 text-sm font-medium text-neutral-700;
+    @apply flex flex-col gap-1 font-body text-sm font-medium text-text-dim;
   }
 
   .aura-input,
   .aura-select {
-    @apply w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900
-      shadow-sm outline-none transition-colors placeholder:text-neutral-400
-      focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200
-      disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400;
+    @apply w-full rounded-md border border-border bg-bg px-3 py-2 font-body text-sm text-text
+      outline-none transition-colors placeholder:text-text-faint
+      focus:border-accent focus:ring-2 focus:ring-accent/15
+      disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .aura-btn-primary {
-    @apply aura-btn bg-neutral-900 text-white shadow-sm hover:bg-neutral-700;
+    @apply aura-btn bg-accent text-[#0C1420] hover:brightness-110;
   }
 
   .aura-btn-secondary {
-    @apply aura-btn border border-neutral-300 bg-white text-neutral-700 shadow-sm hover:bg-neutral-50;
+    @apply aura-btn border border-border bg-surface-2 text-text hover:bg-[#2B3340];
   }
 
   .aura-btn-danger {
-    @apply aura-btn bg-red-50 text-red-700 hover:bg-red-100;
+    @apply aura-btn border border-danger/30 bg-danger-bg text-[#F0A0A8] hover:brightness-110;
   }
 
   .aura-alert {
-    @apply rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700;
+    @apply rounded-base border border-danger/30 bg-danger-bg px-3 py-2 font-body text-sm text-danger;
   }
 
   .aura-table {
-    @apply w-full border-collapse text-left text-sm;
+    @apply w-full border-collapse text-left font-body text-sm;
   }
 
   .aura-table th {
-    @apply border-b border-neutral-200 px-3 py-2 text-xs font-medium uppercase tracking-wide text-neutral-500;
+    @apply border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-text-faint;
   }
 
   .aura-table td {
-    @apply border-b border-neutral-100 px-3 py-2 text-neutral-700;
+    @apply border-b border-border px-3 py-2 text-text;
   }
 }

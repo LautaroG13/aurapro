@@ -26,7 +26,7 @@ export function AcceptInvitationForm({ token }: { token: string }) {
   });
 
   if (previewQuery.isLoading) {
-    return <p className="text-sm text-neutral-500">Cargando invitación...</p>;
+    return <p className="text-sm text-text-dim">Cargando invitación...</p>;
   }
 
   if (previewQuery.isError) {
@@ -54,12 +54,12 @@ export function AcceptInvitationForm({ token }: { token: string }) {
     >
       <div>
         <h1 className="mb-1">AuraPro</h1>
-        <h2 className="font-normal text-neutral-500">
+        <h2 className="font-normal text-text-dim">
           Te invitaron a <strong>{invitation.tenant_name}</strong> como {invitation.role}
         </h2>
       </div>
 
-      <p className="text-sm text-neutral-500">{invitation.email}</p>
+      <p className="text-sm text-text-dim">{invitation.email}</p>
 
       <label className="aura-label">
         Elegí una contraseña

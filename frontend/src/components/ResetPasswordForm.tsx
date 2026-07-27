@@ -29,7 +29,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
     >
       <div>
         <h1 className="mb-1">AuraPro</h1>
-        <h2 className="font-normal text-neutral-500">Elegí una contraseña nueva</h2>
+        <h2 className="font-normal text-text-dim">Elegí una contraseña nueva</h2>
       </div>
 
       <label className="aura-label">

@@ -17,11 +17,11 @@ export function ForgotPasswordForm() {
     return (
       <div className="aura-card flex w-full max-w-sm flex-col gap-4">
         <h1 className="mb-1">AuraPro</h1>
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-text-dim">
           Si <strong>{email}</strong> está registrado, te va a llegar un email con instrucciones para elegir
           una contraseña nueva.
         </p>
-        <Link href="/" className="text-sm text-neutral-500 hover:text-neutral-900 hover:underline">
+        <Link href="/" className="text-sm text-text-dim hover:text-text hover:underline">
           Volver al inicio de sesión
         </Link>
       </div>
@@ -38,7 +38,7 @@ export function ForgotPasswordForm() {
     >
       <div>
         <h1 className="mb-1">AuraPro</h1>
-        <h2 className="font-normal text-neutral-500">Recuperar contraseña</h2>
+        <h2 className="font-normal text-text-dim">Recuperar contraseña</h2>
       </div>
 
       <label className="aura-label">
@@ -56,7 +56,7 @@ export function ForgotPasswordForm() {
         {forgotMutation.isPending ? "Enviando..." : "Enviar instrucciones"}
       </button>
 
-      <Link href="/" className="text-sm text-neutral-500 hover:text-neutral-900 hover:underline">
+      <Link href="/" className="text-sm text-text-dim hover:text-text hover:underline">
         Volver al inicio de sesión
       </Link>
     </form>

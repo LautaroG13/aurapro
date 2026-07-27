@@ -71,7 +71,7 @@ export default function CashPage() {
       {closedSession && (
         <div className="aura-card flex flex-col gap-1">
           <h2>Caja cerrada</h2>
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-text-dim">
             Esperado: ${closedSession.closing_amount_expected?.toFixed(2)} — Declarado: $
             {closedSession.closing_amount_declared?.toFixed(2)} — Diferencia: $
             {(
@@ -81,7 +81,7 @@ export default function CashPage() {
         </div>
       )}
 
-      {sessionQuery.isLoading && <p className="text-sm text-neutral-500">Cargando...</p>}
+      {sessionQuery.isLoading && <p className="text-sm text-text-dim">Cargando...</p>}
 
       {!sessionQuery.isLoading && !session && (
         <div className="aura-card flex flex-col gap-4">
@@ -117,13 +117,13 @@ export default function CashPage() {
         <>
           <div className="aura-card flex flex-col gap-4">
             <h2>Caja abierta</h2>
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm text-text-dim">
               Apertura: ${session.opening_amount.toFixed(2)} — {new Date(session.created_at).toLocaleString()}
             </p>
 
             <div className="flex flex-col gap-2">
               <h3>Ventas por medio de pago</h3>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-text-dim">
                 Todas las ventas del turno, no solo el efectivo que pasó por esta caja.
               </p>
               <div className="overflow-x-auto">
@@ -145,7 +145,7 @@ export default function CashPage() {
                     ))}
                     {salesSummaryQuery.data?.length === 0 && (
                       <tr>
-                        <td colSpan={3} className="text-center text-neutral-400">
+                        <td colSpan={3} className="text-center text-text-faint">
                           Sin ventas todavía en este turno.
                         </td>
                       </tr>
@@ -176,7 +176,7 @@ export default function CashPage() {
                   ))}
                   {session.movements.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="text-center text-neutral-400">
+                      <td colSpan={4} className="text-center text-text-faint">
                         Sin movimientos todavía.
                       </td>
                     </tr>

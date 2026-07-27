@@ -119,7 +119,7 @@ export function TeamMembersTable() {
     <div className="flex flex-col gap-6">
       <div className="aura-card flex flex-col gap-4">
         <h2>Usuarios</h2>
-        {usersQuery.isLoading && <p className="text-sm text-neutral-500">Cargando...</p>}
+        {usersQuery.isLoading && <p className="text-sm text-text-dim">Cargando...</p>}
         {usersQuery.isError && (
           <p role="alert" className="aura-alert">
             {(usersQuery.error as Error).message}
@@ -185,7 +185,7 @@ export function TeamMembersTable() {
 
       <div className="aura-card flex flex-col gap-4">
         <h2>Invitaciones pendientes</h2>
-        {invitationsQuery.isLoading && <p className="text-sm text-neutral-500">Cargando...</p>}
+        {invitationsQuery.isLoading && <p className="text-sm text-text-dim">Cargando...</p>}
         {invitationsQuery.isError && (
           <p role="alert" className="aura-alert">
             {(invitationsQuery.error as Error).message}
@@ -216,7 +216,7 @@ export function TeamMembersTable() {
                 })}
                 {pendingInvitations.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="text-center text-neutral-400">
+                    <td colSpan={4} className="text-center text-text-faint">
                       Sin invitaciones pendientes.
                     </td>
                   </tr>

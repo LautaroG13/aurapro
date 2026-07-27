@@ -127,7 +127,7 @@ export function SaleForm() {
             ))}
           </select>
           {customersQuery.isLoading && (
-            <span className="text-xs text-neutral-400">cargando clientes...</span>
+            <span className="text-xs text-text-faint">cargando clientes...</span>
           )}
         </label>
 
@@ -155,8 +155,8 @@ export function SaleForm() {
           onChange={(e) => setProductSearch(e.target.value)}
           className="aura-input"
         />
-        {productsQuery.isLoading && <p className="text-sm text-neutral-500">Cargando productos...</p>}
-        <ul className="flex max-h-56 flex-col divide-y divide-neutral-100 overflow-y-auto rounded-lg border border-neutral-200">
+        {productsQuery.isLoading && <p className="text-sm text-text-dim">Cargando productos...</p>}
+        <ul className="flex max-h-56 flex-col divide-y divide-border overflow-y-auto rounded-md border border-border">
           {filteredProducts.map((product) => {
             const hasVariants = product.variants.length > 0;
             const selectedVariantId = selectedVariantByProduct[product.id] ?? "";
@@ -202,15 +202,15 @@ export function SaleForm() {
             );
           })}
           {productsQuery.data && filteredProducts.length === 0 && (
-            <li className="px-3 py-2 text-sm text-neutral-400">Sin resultados.</li>
+            <li className="px-3 py-2 text-sm text-text-faint">Sin resultados.</li>
           )}
         </ul>
       </div>
 
       <div className="flex flex-col gap-2">
         <h3>Carrito</h3>
-        {cart.length === 0 && <p className="text-sm text-neutral-500">Sin productos agregados.</p>}
-        <ul className="flex flex-col divide-y divide-neutral-100">
+        {cart.length === 0 && <p className="text-sm text-text-dim">Sin productos agregados.</p>}
+        <ul className="flex flex-col divide-y divide-border">
           {cart.map((line) => {
             const maxStock = line.variant ? line.variant.stock : line.product.current_stock;
             return (
@@ -221,7 +221,7 @@ export function SaleForm() {
                 <span className="flex items-center gap-2">
                   {line.product.name}
                   {line.variant && (
-                    <span className="text-neutral-500">({formatVariantLabel(line.variant)})</span>
+                    <span className="text-text-dim">({formatVariantLabel(line.variant)})</span>
                   )}
                   <input
                     type="number"
@@ -267,7 +267,7 @@ export function SaleForm() {
         </p>
       )}
       {saleMutation.isSuccess && (
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-text-dim">
           Venta registrada ({saleMutation.data.id}) — Total real: $
           {saleMutation.data.total_amount.toFixed(2)} {saleMutation.data.currency}
         </p>

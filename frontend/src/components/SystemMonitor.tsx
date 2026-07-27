@@ -12,7 +12,7 @@ function StatusDot({ healthy }: { healthy: boolean }) {
     <span
       role="status"
       aria-label={healthy ? "operativo" : "caído"}
-      className={"inline-block h-2.5 w-2.5 rounded-full " + (healthy ? "bg-emerald-500" : "bg-red-500")}
+      className={"inline-block h-2.5 w-2.5 rounded-full " + (healthy ? "bg-success" : "bg-danger")}
     />
   );
 }
@@ -21,9 +21,9 @@ function ServiceRow({ service }: { service: ServiceStatus }) {
   return (
     <div className="flex items-center gap-2 text-sm">
       <StatusDot healthy={service.healthy} />
-      <span className="capitalize text-neutral-700">{service.name}</span>
+      <span className="capitalize text-text">{service.name}</span>
       {!service.healthy && service.detail && (
-        <span className="text-xs text-neutral-500">({service.detail})</span>
+        <span className="text-xs text-text-dim">({service.detail})</span>
       )}
     </div>
   );
@@ -46,7 +46,7 @@ export function SystemMonitor() {
     <div className="aura-card flex flex-col gap-4">
       <h2>Estado del sistema</h2>
 
-      {statusQuery.isLoading && <p className="text-sm text-neutral-500">Chequeando servicios...</p>}
+      {statusQuery.isLoading && <p className="text-sm text-text-dim">Chequeando servicios...</p>}
       {statusQuery.isError && (
         <p role="alert" className="aura-alert">
           {(statusQuery.error as Error).message}
@@ -62,14 +62,14 @@ export function SystemMonitor() {
 
       <div>
         <h3>Backlog de outbox</h3>
-        {outboxQuery.isLoading && <p className="text-sm text-neutral-500">Cargando...</p>}
+        {outboxQuery.isLoading && <p className="text-sm text-text-dim">Cargando...</p>}
         {outboxQuery.isError && (
           <p role="alert" className="aura-alert">
             {(outboxQuery.error as Error).message}
           </p>
         )}
         {outboxQuery.data && (
-          <p className="text-2xl font-bold text-neutral-900">{outboxQuery.data.pending_count}</p>
+          <p className="font-mono text-2xl font-bold text-text">{outboxQuery.data.pending_count}</p>
         )}
       </div>
     </div>

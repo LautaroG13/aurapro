@@ -68,7 +68,7 @@ export function InviteUserForm() {
         </p>
       )}
       {inviteMutation.isSuccess && (
-        <p className="text-sm text-green-600">Invitación enviada a {inviteMutation.data.email}.</p>
+        <p className="text-sm text-success">Invitación enviada a {inviteMutation.data.email}.</p>
       )}
     </form>
   );
