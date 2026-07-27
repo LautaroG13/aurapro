@@ -13,6 +13,11 @@ import { Sidebar } from "./Sidebar";
 // exige login) como el resto de la app.
 const PUBLIC_PATH_PREFIXES = ["/invite/", "/forgot-password", "/reset-password/"];
 
+// Vidriera de componentes del sistema de diseño (Fase 1, dev-only):
+// arma su propio layout full-bleed en dark mode, no la tarjeta clara
+// centrada de arriba, y tampoco requiere login.
+const PUBLIC_STANDALONE_PATH_PREFIXES = ["/design-system"];
+
 /**
  * Shell persistente de la app: sidebar + área de contenido.
  * El gate de autenticación lo sigue resolviendo AuthGate tal cual --
@@ -22,9 +27,12 @@ const PUBLIC_PATH_PREFIXES = ["/invite/", "/forgot-password", "/reset-password/"
  */
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isPublicRoute = PUBLIC_PATH_PREFIXES.some((prefix) => pathname?.startsWith(prefix));
 
-  if (isPublicRoute) {
+  if (PUBLIC_STANDALONE_PATH_PREFIXES.some((prefix) => pathname?.startsWith(prefix))) {
+    return <>{children}</>;
+  }
+
+  if (PUBLIC_PATH_PREFIXES.some((prefix) => pathname?.startsWith(prefix))) {
     return <div className="flex min-h-screen items-center justify-center bg-neutral-50 p-6">{children}</div>;
   }
 

@@ -2,6 +2,42 @@
 
 @theme {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* --- Sistema de diseño dark mode (Fase 1, 2026-07-27) ---
+     Aditivo a propósito: no se tocó --font-sans ni los estilos de
+     body/html de abajo, así que las páginas actuales (Productos,
+     Clientes, etc.) se ven exactamente igual que antes. Estos tokens
+     los consumen únicamente components/ui/* y /design-system hasta
+     que una fase futura migre el resto de la app. Nombres calcados de
+     AuraPro_Design_System_Dark.md, sección 2. */
+  --color-bg: #14181f;
+  --color-surface: #1c222c;
+  --color-surface-2: #242b37;
+  --color-border: #2a323f;
+
+  --color-text: #e7eaef;
+  --color-text-dim: #8e98a8;
+  --color-text-faint: #5c6572;
+
+  --color-accent: #4f8fe0;
+  --color-accent-dim: #3a6dae;
+
+  --color-success: #4c9a6a;
+  --color-success-bg: #4c9a6a24;
+  --color-warn: #d9a24b;
+  --color-warn-bg: #d9a24b24;
+  --color-danger: #d9636f;
+  --color-danger-bg: #d9636f24;
+
+  --radius-base: 8px;
+
+  /* Las variables --font-space-grotesk / --font-inter /
+     --font-jetbrains-mono las inyecta next/font vía className en
+     <html> (ver app/layout.tsx + lib/fonts.ts) -- acá solo se arma la
+     cadena de fallback. */
+  --font-display: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  --font-body: var(--font-inter), "Inter", sans-serif;
+  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
 }
 
 @layer base {
