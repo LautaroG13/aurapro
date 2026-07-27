@@ -50,6 +50,8 @@ class User(Base, TenantModel):
 
     email: Mapped[str] = mapped_column(String, nullable=False, index=True)
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
+    first_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String, nullable=True)
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="user_role", native_enum=False, length=20),
         nullable=False,
@@ -86,3 +88,19 @@ class Invitation(Base, TenantModel):
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PasswordReset(Base, TenantModel):
+    """Token de un solo uso para recuperar contraseña, mismo patrón que
+    Invitation (token + expires_at + *_at que marca uso). Expira mucho
+    antes que una invitación (1 hora, no 7 días) -- es un flujo de
+    self-service inmediato, no algo que alguien deje pendiente días."""
+
+    __tablename__ = "password_resets"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    token: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

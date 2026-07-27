@@ -66,6 +66,14 @@ class CashMovementRead(BaseModel):
     created_at: datetime
 
 
+class PaymentMethodSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    payment_method: str
+    count: int
+    total_amount: float
+
+
 class CashSessionRead(BaseModel):
     model_config = ConfigDict(extra="forbid", from_attributes=True)
 

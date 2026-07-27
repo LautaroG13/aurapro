@@ -1,12 +1,23 @@
+import enum
 import uuid
 
-from sqlalchemy import ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import Enum, ForeignKey, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.async_base import Base
 from app.modules.identity.models import User
 from app.shared.tenant_model import TenantModel
+
+
+class CustomerTaxStatus(str, enum.Enum):
+    """Situación fiscal ante AFIP/ARCA (Argentina). Determina qué tipo
+    de comprobante corresponde emitirle -- relevante para cuando se
+    integre facturación electrónica, no usado todavía en ningún cálculo."""
+
+    RESPONSABLE_INSCRIPTO = "RESPONSABLE_INSCRIPTO"
+    MONOTRIBUTO = "MONOTRIBUTO"
+    EXENTO = "EXENTO"
 
 
 class CustomerType(Base, TenantModel):
@@ -35,6 +46,11 @@ class Customer(Base, TenantModel):
     # no debe bloquearse por clientes que lo tengan asignado.
     customer_type_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("customer_types.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    cuit: Mapped[str | None] = mapped_column(String, nullable=True)
+    tax_status: Mapped[CustomerTaxStatus | None] = mapped_column(
+        Enum(CustomerTaxStatus, name="customer_tax_status", native_enum=False, length=30),
+        nullable=True,
     )
 
     default_salesperson: Mapped["User | None"] = relationship()

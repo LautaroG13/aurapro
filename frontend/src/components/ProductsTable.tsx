@@ -47,16 +47,18 @@ export function ProductsTable({ onEdit }: ProductsTableProps) {
               <th>SKU</th>
               <th>Precio</th>
               <th>Stock</th>
+              <th>Estado</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {productsQuery.data?.map((product) => (
-              <tr key={product.id}>
+              <tr key={product.id} className={product.is_active ? "" : "text-neutral-400"}>
                 <td>{product.name}</td>
                 <td>{product.sku ?? "—"}</td>
                 <td>${product.price.toFixed(2)}</td>
                 <td>{product.current_stock}</td>
+                <td>{product.is_active ? "Activo" : "Inactivo"}</td>
                 <td className="flex gap-2">
                   <button
                     type="button"
@@ -82,7 +84,7 @@ export function ProductsTable({ onEdit }: ProductsTableProps) {
             ))}
             {productsQuery.data?.length === 0 && (
               <tr>
-                <td colSpan={5} className="text-center text-neutral-400">
+                <td colSpan={6} className="text-center text-neutral-400">
                   Sin productos todavía.
                 </td>
               </tr>

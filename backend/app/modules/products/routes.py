@@ -11,6 +11,8 @@ from app.modules.products.schemas import (
     ProductAttributeRead,
     ProductAttributeValueCreate,
     ProductAttributeValueRead,
+    ProductCategoryCreate,
+    ProductCategoryRead,
     ProductCreate,
     ProductRead,
     ProductUpdate,
@@ -20,10 +22,13 @@ from app.modules.products.schemas import (
     ProductVariantUpdate,
 )
 from app.modules.products.services import (
+    InvalidCategoryError,
     ProductAttributeDuplicateNameError,
     ProductAttributeNotFoundError,
     ProductAttributeValueDuplicateError,
     ProductAttributeValueNotFoundError,
+    ProductCategoryDuplicateNameError,
+    ProductCategoryNotFoundError,
     ProductInUseError,
     ProductNotFoundError,
     ProductVariantDuplicateError,
@@ -31,15 +36,18 @@ from app.modules.products.services import (
     ProductVariantSkuConflictError,
     create_attribute,
     create_attribute_value,
+    create_category,
     create_product,
     create_variant,
     create_variants_bulk,
     delete_attribute,
     delete_attribute_value,
+    delete_category,
     delete_product,
     delete_variant,
     get_product,
     list_attributes,
+    list_categories,
     list_products,
     update_product,
     update_variant,
@@ -116,13 +124,50 @@ async def delete_attribute_value_endpoint(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+@router.post("/categories", response_model=ProductCategoryRead, status_code=201)
+async def create_category_endpoint(
+    payload: ProductCategoryCreate,
+    current_user: CurrentUser = Depends(require_role(*WRITE_ROLES)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> ProductCategoryRead:
+    try:
+        category = await create_category(db, current_user.tenant_id, payload)
+    except ProductCategoryDuplicateNameError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ProductCategoryRead.model_validate(category)
+
+
+@router.get("/categories", response_model=list[ProductCategoryRead])
+async def list_categories_endpoint(
+    _current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> list[ProductCategoryRead]:
+    categories = await list_categories(db)
+    return [ProductCategoryRead.model_validate(c) for c in categories]
+
+
+@router.delete("/categories/{category_id}", status_code=204)
+async def delete_category_endpoint(
+    category_id: UUID,
+    _current_user: CurrentUser = Depends(require_role(*WRITE_ROLES)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> None:
+    try:
+        await delete_category(db, category_id)
+    except ProductCategoryNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @router.post("", response_model=ProductRead, status_code=201)
 async def create_product_endpoint(
     payload: ProductCreate,
     current_user: CurrentUser = Depends(require_role(*WRITE_ROLES)),
     db: AsyncSession = Depends(get_tenant_db),
 ) -> ProductRead:
-    product = await create_product(db, current_user.tenant_id, payload)
+    try:
+        product = await create_product(db, current_user.tenant_id, payload)
+    except InvalidCategoryError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return ProductRead.model_validate(product)
 
 
@@ -161,6 +206,8 @@ async def update_product_endpoint(
         product = await update_product(db, product_id, payload)
     except ProductNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvalidCategoryError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return ProductRead.model_validate(product)
 
 

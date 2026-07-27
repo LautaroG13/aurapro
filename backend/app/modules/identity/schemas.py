@@ -39,9 +39,38 @@ class UserRead(BaseModel):
     id: UUID
     tenant_id: UUID
     email: str
+    first_name: str | None
+    last_name: str | None
     role: UserRole
     is_superadmin: bool
     created_at: datetime
+
+
+class UserUpdate(BaseModel):
+    """Todos los campos opcionales -- PATCH parcial. Si `new_password`
+    viene, un ADMIN puede resetear la contraseña de otro miembro del
+    equipo directamente (sin pasar por el flujo de email de
+    forgot-password) -- ver identity/routes.py para el guard de
+    permisos."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    first_name: str | None = None
+    last_name: str | None = None
+    role: UserRole | None = None
+    new_password: str | None = Field(default=None, min_length=8)
+
+
+class ForgotPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    password: str = Field(min_length=8)
 
 
 class InvitationCreate(BaseModel):

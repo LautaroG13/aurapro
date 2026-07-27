@@ -4,6 +4,8 @@ import type {
   ProductAttributeRead,
   ProductAttributeValueCreate,
   ProductAttributeValueRead,
+  ProductCategoryCreate,
+  ProductCategoryRead,
   ProductCreate,
   ProductRead,
   ProductUpdate,
@@ -15,6 +17,21 @@ import type {
 
 export async function listProducts(): Promise<ProductRead[]> {
   return apiFetch<ProductRead[]>("/api/v1/products");
+}
+
+export async function listCategories(): Promise<ProductCategoryRead[]> {
+  return apiFetch<ProductCategoryRead[]>("/api/v1/products/categories");
+}
+
+export async function createCategory(payload: ProductCategoryCreate): Promise<ProductCategoryRead> {
+  return apiFetch<ProductCategoryRead>("/api/v1/products/categories", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteCategory(categoryId: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/products/categories/${categoryId}`, { method: "DELETE" });
 }
 
 export async function listAttributes(): Promise<ProductAttributeRead[]> {

@@ -1,11 +1,23 @@
 import uuid
 
-from sqlalchemy import CheckConstraint, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.async_base import Base
 from app.shared.tenant_model import TenantModel
+
+
+class ProductCategory(Base, TenantModel):
+    """Catálogo de categorías por tenant, mismo patrón que CustomerType
+    (customers/models.py). Reemplaza el campo `category` de texto libre
+    que tenía Product -- ver migración `category -> category_id` para
+    cómo se preservaron los valores existentes al pasar a este catálogo."""
+
+    __tablename__ = "product_categories"
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_product_categories_tenant_id_name"),)
+
+    name: Mapped[str] = mapped_column(String, nullable=False)
 
 
 class Product(Base, TenantModel):
@@ -28,11 +40,22 @@ class Product(Base, TenantModel):
     # sincronizado en la base.
     cost: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
     current_stock: Mapped[int] = mapped_column(nullable=False, default=0)
-    category: Mapped[str | None] = mapped_column(String, nullable=True)
+    # SET NULL: una categoría es una etiqueta de categorización liviana
+    # (mismo criterio que Customer.customer_type_id) -- borrar una
+    # categoría no debe bloquearse por productos que la tengan asignada.
+    category_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("product_categories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     sku: Mapped[str | None] = mapped_column(String, nullable=True)
     barcode: Mapped[str | None] = mapped_column(String, nullable=True)
     image_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Dar de baja sin borrar: un producto inactivo no aparece para
+    # vender (filtrado en el frontend, ver SaleForm) pero se sigue
+    # listando/editando en Productos, y las ventas históricas que ya lo
+    # referencian no se ven afectadas (no hay ondelete de por medio).
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
 
+    category: Mapped["ProductCategory | None"] = relationship()
     variants: Mapped[list["ProductVariant"]] = relationship(
         back_populates="product", cascade="all, delete-orphan"
     )

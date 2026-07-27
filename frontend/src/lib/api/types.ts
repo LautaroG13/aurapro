@@ -90,12 +90,30 @@ export interface ProductRead {
   price: number;
   cost: number | null;
   current_stock: number;
-  category: string | null;
+  category_id: string | null;
   sku: string | null;
   barcode: string | null;
   image_url: string | null;
+  is_active: boolean;
   created_at: string;
   variants: ProductVariantRead[];
+}
+
+/**
+ * Espeja backend/app/modules/products/schemas.py::ProductCategoryRead.
+ */
+export interface ProductCategoryRead {
+  id: string;
+  tenant_id: string;
+  name: string;
+  created_at: string;
+}
+
+/**
+ * Espeja backend/app/modules/products/schemas.py::ProductCategoryCreate.
+ */
+export interface ProductCategoryCreate {
+  name: string;
 }
 
 /**
@@ -142,10 +160,11 @@ export interface ProductCreate {
   price: number;
   cost?: number | null;
   current_stock?: number;
-  category?: string | null;
+  category_id?: string | null;
   sku?: string | null;
   barcode?: string | null;
   image_url?: string | null;
+  is_active?: boolean;
 }
 
 /**
@@ -158,10 +177,11 @@ export interface ProductUpdate {
   price?: number;
   cost?: number | null;
   current_stock?: number;
-  category?: string | null;
+  category_id?: string | null;
   sku?: string | null;
   barcode?: string | null;
   image_url?: string | null;
+  is_active?: boolean;
 }
 
 /**
@@ -196,9 +216,35 @@ export interface UserRead {
   id: string;
   tenant_id: string;
   email: string;
+  first_name: string | null;
+  last_name: string | null;
   role: "ADMIN" | "VENDEDOR" | "VIEWER";
   is_superadmin: boolean;
   created_at: string;
+}
+
+/**
+ * Espeja backend/app/modules/identity/schemas.py::UserUpdate.
+ */
+export interface UserUpdate {
+  first_name?: string | null;
+  last_name?: string | null;
+  role?: "ADMIN" | "VENDEDOR" | "VIEWER";
+  new_password?: string | null;
+}
+
+/**
+ * Espeja backend/app/modules/identity/schemas.py::ForgotPasswordRequest.
+ */
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+/**
+ * Espeja backend/app/modules/identity/schemas.py::ResetPasswordRequest.
+ */
+export interface ResetPasswordRequest {
+  password: string;
 }
 
 /**
@@ -231,6 +277,11 @@ export interface InvitationPreview {
 }
 
 /**
+ * Espeja backend/app/modules/customers/models.py::CustomerTaxStatus.
+ */
+export type CustomerTaxStatus = "RESPONSABLE_INSCRIPTO" | "MONOTRIBUTO" | "EXENTO";
+
+/**
  * Espeja backend/app/modules/customers/schemas.py::CustomerRead.
  */
 export interface CustomerRead {
@@ -243,6 +294,8 @@ export interface CustomerRead {
   credit_limit: number | null;
   default_salesperson_id: string | null;
   customer_type_id: string | null;
+  cuit: string | null;
+  tax_status: CustomerTaxStatus | null;
   created_at: string;
 }
 
@@ -257,6 +310,8 @@ export interface CustomerCreate {
   credit_limit?: number | null;
   default_salesperson_id?: string | null;
   customer_type_id?: string | null;
+  cuit?: string | null;
+  tax_status?: CustomerTaxStatus | null;
 }
 
 /**
@@ -271,6 +326,8 @@ export interface CustomerUpdate {
   credit_limit?: number | null;
   default_salesperson_id?: string | null;
   customer_type_id?: string | null;
+  cuit?: string | null;
+  tax_status?: CustomerTaxStatus | null;
 }
 
 /**
@@ -371,6 +428,15 @@ export interface CashMovementCreate {
   type: "INCOME" | "EXPENSE";
   amount: number;
   description?: string | null;
+}
+
+/**
+ * Espeja backend/app/modules/treasury/schemas.py::PaymentMethodSummary.
+ */
+export interface PaymentMethodSummary {
+  payment_method: string;
+  count: number;
+  total_amount: number;
 }
 
 /**

@@ -8,10 +8,10 @@ import { decodeToken, getStoredToken } from "@/lib/auth";
 
 import { Sidebar } from "./Sidebar";
 
-// /invite/[token] lo abre alguien que todavía no tiene cuenta ni
-// token -- no puede pasar por AuthGate (que exige login) como el resto
-// de la app.
-const PUBLIC_PATH_PREFIXES = ["/invite/"];
+// Rutas que abre alguien sin token todavía (invitación pendiente,
+// recuperación de contraseña) -- no pueden pasar por AuthGate (que
+// exige login) como el resto de la app.
+const PUBLIC_PATH_PREFIXES = ["/invite/", "/forgot-password", "/reset-password/"];
 
 /**
  * Shell persistente de la app: sidebar + área de contenido.

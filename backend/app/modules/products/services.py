@@ -11,10 +11,17 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.modules.products.models import Product, ProductAttribute, ProductAttributeValue, ProductVariant
+from app.modules.products.models import (
+    Product,
+    ProductAttribute,
+    ProductAttributeValue,
+    ProductCategory,
+    ProductVariant,
+)
 from app.modules.products.schemas import (
     ProductAttributeCreate,
     ProductAttributeValueCreate,
+    ProductCategoryCreate,
     ProductCreate,
     ProductUpdate,
     ProductVariantBulkCreate,
@@ -28,6 +35,18 @@ class ProductNotFoundError(Exception):
 
 
 class ProductInUseError(Exception):
+    pass
+
+
+class ProductCategoryNotFoundError(Exception):
+    pass
+
+
+class ProductCategoryDuplicateNameError(Exception):
+    pass
+
+
+class InvalidCategoryError(Exception):
     pass
 
 
@@ -67,7 +86,16 @@ class ProductVariantSkuConflictError(Exception):
     pass
 
 
+async def _validate_category(db: AsyncSession, category_id: UUID | None) -> None:
+    if category_id is None:
+        return
+    result = await db.execute(select(ProductCategory.id).where(ProductCategory.id == category_id))
+    if result.scalar_one_or_none() is None:
+        raise InvalidCategoryError(f"Categoría {category_id} no existe en este tenant")
+
+
 async def create_product(db: AsyncSession, tenant_id: UUID, payload: ProductCreate) -> Product:
+    await _validate_category(db, payload.category_id)
     product = Product(tenant_id=tenant_id, **payload.model_dump())
     db.add(product)
     await db.commit()
@@ -107,7 +135,10 @@ async def get_product(db: AsyncSession, product_id: UUID) -> Product:
 
 async def update_product(db: AsyncSession, product_id: UUID, payload: ProductUpdate) -> Product:
     product = await get_product(db, product_id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    updates = payload.model_dump(exclude_unset=True)
+    if "category_id" in updates:
+        await _validate_category(db, updates["category_id"])
+    for field, value in updates.items():
         setattr(product, field, value)
     await db.commit()
     await db.refresh(product)
@@ -133,6 +164,36 @@ async def delete_product(db: AsyncSession, product_id: UUID) -> None:
         raise ProductInUseError(
             f"Producto {product_id} no se puede eliminar: tiene ventas asociadas"
         ) from exc
+
+
+async def create_category(db: AsyncSession, tenant_id: UUID, payload: ProductCategoryCreate) -> ProductCategory:
+    category = ProductCategory(tenant_id=tenant_id, **payload.model_dump())
+    db.add(category)
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise ProductCategoryDuplicateNameError(f"Ya existe una categoría llamada '{payload.name}'") from exc
+    await db.refresh(category)
+    return category
+
+
+async def list_categories(db: AsyncSession) -> list[ProductCategory]:
+    result = await db.execute(select(ProductCategory).order_by(ProductCategory.created_at.desc()))
+    return list(result.scalars().all())
+
+
+async def delete_category(db: AsyncSession, category_id: UUID) -> None:
+    result = await db.execute(select(ProductCategory).where(ProductCategory.id == category_id))
+    category = result.scalar_one_or_none()
+    if category is None:
+        raise ProductCategoryNotFoundError(f"Categoría {category_id} no encontrada")
+    await db.delete(category)
+    await db.commit()
+    # Sin try/except IntegrityError: ondelete=SET NULL en
+    # Product.category_id significa que Postgres nunca rechaza este
+    # DELETE -- los productos que tenían esta categoría quedan con
+    # category_id=NULL.
 
 
 async def create_attribute(

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
+import Link from "next/link";
 import { useState } from "react";
 
 import { login } from "@/lib/api/auth";
@@ -53,6 +54,10 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
             className="aura-input"
           />
         </label>
+
+        <Link href="/forgot-password" className="text-sm text-neutral-500 hover:text-neutral-900 hover:underline">
+          ¿Olvidaste tu contraseña?
+        </Link>
 
         <button type="submit" disabled={loginMutation.isPending} className="aura-btn-primary">
           {loginMutation.isPending ? "Ingresando..." : "Ingresar"}

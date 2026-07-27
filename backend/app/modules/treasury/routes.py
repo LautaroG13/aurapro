@@ -16,6 +16,7 @@ from app.modules.treasury.schemas import (
     CashSessionRead,
     CustomerAccountRead,
     CustomerPaymentCreate,
+    PaymentMethodSummary,
 )
 from app.modules.treasury.services import (
     CashSessionAlreadyClosedError,
@@ -25,6 +26,7 @@ from app.modules.treasury.services import (
     add_cash_movement,
     close_cash_session,
     get_cash_session,
+    get_cash_session_sales_summary,
     get_customer_account,
     get_open_cash_session,
     open_cash_session,
@@ -105,6 +107,19 @@ async def get_cash_session_endpoint(
     except CashSessionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return CashSessionRead.model_validate(session)
+
+
+@router.get("/cash/sessions/{session_id}/sales-summary", response_model=list[PaymentMethodSummary])
+async def get_cash_session_sales_summary_endpoint(
+    session_id: UUID,
+    _current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> list[PaymentMethodSummary]:
+    try:
+        summary = await get_cash_session_sales_summary(db, session_id)
+    except CashSessionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return [PaymentMethodSummary(**row) for row in summary]
 
 
 @router.post("/cash/sessions/{session_id}/movements", response_model=CashMovementRead, status_code=201)
