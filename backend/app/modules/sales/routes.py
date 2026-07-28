@@ -94,5 +94,5 @@ async def get_sale_receipt_endpoint(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="venta-{sale.id}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="venta-{sale.sale_number:06d}.pdf"'},
     )

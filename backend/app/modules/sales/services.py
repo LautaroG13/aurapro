@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.customers.models import Customer
+from app.modules.identity.models import Tenant
 from app.modules.products.models import Product, ProductVariant
 from app.modules.sales.models import Sale, SaleItem, SaleStatus
 from app.modules.sales.schemas import SaleCreate
@@ -138,9 +139,17 @@ async def create_sale(db: AsyncSession, tenant_id: UUID, payload: SaleCreate) ->
         )
         total_amount += unit_price * item.quantity
 
+    # Lock sobre Tenant para asignar sale_number sin duplicados/gaps
+    # bajo ventas concurrentes -- mismo patrón que _lock_for_update
+    # sobre stock, pero acá sobre el contador del tenant.
+    tenant = await _lock_for_update(db, Tenant, tenant_id)
+    sale_number = tenant.next_sale_number
+    tenant.next_sale_number += 1
+
     sale = Sale(
         tenant_id=tenant_id,
         customer_id=customer.id,
+        sale_number=sale_number,
         total_amount=total_amount,
         currency=payload.currency,
         status=SaleStatus.COMPLETED,

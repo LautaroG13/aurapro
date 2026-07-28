@@ -371,6 +371,7 @@ export interface SaleRead {
   id: string;
   tenant_id: string;
   customer_id: string;
+  sale_number: number;
   total_amount: number;
   currency: string;
   status: "PENDING" | "COMPLETED" | "CANCELLED";

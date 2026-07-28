@@ -24,7 +24,7 @@ class SaleCreate(BaseModel):
 
     customer_id: UUID
     payment_method: str = Field(min_length=1)
-    currency: str = Field(default="USD", pattern=r"^[A-Z]{3}$")
+    currency: str = Field(default="ARS", pattern=r"^[A-Z]{3}$")
     items: list[SaleItemCreate] = Field(min_length=1)
     # Opcionales incluso cuando payment_method es tarjeta -- ver nota en
     # el modelo Sale.
@@ -48,6 +48,7 @@ class SaleRead(BaseModel):
     id: UUID
     tenant_id: UUID
     customer_id: UUID
+    sale_number: int
     total_amount: float
     currency: str
     status: SaleStatus

@@ -48,6 +48,7 @@ export function SalesTable() {
         <table className="aura-table">
           <thead>
             <tr>
+              <th>N°</th>
               <th>Fecha</th>
               <th>Cliente</th>
               <th>Ítems</th>
@@ -60,12 +61,11 @@ export function SalesTable() {
           <tbody>
             {salesQuery.data?.map((sale) => (
               <tr key={sale.id}>
+                <td>{String(sale.sale_number).padStart(6, "0")}</td>
                 <td>{new Date(sale.created_at).toLocaleString()}</td>
                 <td>{customerNameById.get(sale.customer_id) ?? "—"}</td>
                 <td>{sale.items.reduce((sum, item) => sum + item.quantity, 0)}</td>
-                <td>
-                  ${sale.total_amount.toFixed(2)} {sale.currency}
-                </td>
+                <td>${sale.total_amount.toFixed(2)}</td>
                 <td>{paymentMethodLabel(sale.payment_method)}</td>
                 <td>{STATUS_LABELS[sale.status] ?? sale.status}</td>
                 <td>
@@ -89,7 +89,7 @@ export function SalesTable() {
             ))}
             {salesQuery.data?.length === 0 && (
               <tr>
-                <td colSpan={7} className="text-center text-text-faint">
+                <td colSpan={8} className="text-center text-text-faint">
                   Sin ventas todavía.
                 </td>
               </tr>

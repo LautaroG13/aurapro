@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,6 +33,10 @@ class Tenant(Base):
     # blacklist); son válidos hasta que expiran.
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Próximo Sale.sale_number a asignar en este tenant -- se lee y
+    # pisa bajo lock (FOR UPDATE) dentro de la misma transacción de
+    # create_sale, ver app/modules/sales/services.py.
+    next_sale_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
 
     users: Mapped[list["User"]] = relationship(back_populates="tenant", cascade="all, delete-orphan")
 

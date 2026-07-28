@@ -297,8 +297,8 @@ export function SaleForm() {
       {saleMutation.isSuccess && (
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-sm text-text-dim">
-            Venta registrada ({saleMutation.data.id}) — Total real: $
-            {saleMutation.data.total_amount.toFixed(2)} {saleMutation.data.currency}
+            Venta N° {String(saleMutation.data.sale_number).padStart(6, "0")} registrada — Total real: $
+            {saleMutation.data.total_amount.toFixed(2)}
           </p>
           <button
             type="button"

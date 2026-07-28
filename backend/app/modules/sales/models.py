@@ -1,7 +1,7 @@
 import enum
 import uuid
 
-from sqlalchemy import CheckConstraint, Enum, ForeignKey, Integer, Numeric, String
+from sqlalchemy import CheckConstraint, Enum, ForeignKey, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,7 +19,10 @@ class SaleStatus(str, enum.Enum):
 
 class Sale(Base, TenantModel):
     __tablename__ = "sales"
-    __table_args__ = (CheckConstraint("total_amount > 0", name="ck_sales_total_amount_positive"),)
+    __table_args__ = (
+        CheckConstraint("total_amount > 0", name="ck_sales_total_amount_positive"),
+        UniqueConstraint("tenant_id", "sale_number", name="uq_sales_tenant_id_sale_number"),
+    )
 
     # RESTRICT, no CASCADE: un Customer con ventas asociadas no se puede
     # borrar (ver el fix en customers/services.py que atrapa el
@@ -30,9 +33,14 @@ class Sale(Base, TenantModel):
     total_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     # server_default además de default: sin esto, un INSERT que llegue
     # por fuera del ORM (no vía la Session de SQLAlchemy) rompe con
-    # NOT NULL violation en vez de heredar 'USD'/'COMPLETED' como hacía
+    # NOT NULL violation en vez de heredar 'ARS'/'COMPLETED' como hacía
     # init.sql a nivel de Postgres.
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD", server_default="USD")
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="ARS", server_default="ARS")
+    # Correlativo por tenant (no global) -- se muestra en vez del UUID
+    # en la UI/PDF, más corto y familiar tipo número de factura. Se
+    # asigna en create_sale bajo lock sobre Tenant.next_sale_number
+    # para que sea gapless-safe ante ventas concurrentes.
+    sale_number: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[SaleStatus] = mapped_column(
         Enum(SaleStatus, name="sale_status", native_enum=False, length=20),
         nullable=False,
