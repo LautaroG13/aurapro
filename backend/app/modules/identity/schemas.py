@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.modules.identity.models import UserRole
+from app.shared.tax_status import TaxStatus
 
 
 class TenantRegister(BaseModel):
@@ -106,6 +107,35 @@ class InvitationAccept(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     password: str = Field(min_length=8)
+
+
+class TenantProfileRead(BaseModel):
+    """logo NO viaja acá (serían varios KB de base64 en cada request
+    que lo pida) -- has_logo alcanza para que el frontend decida si
+    mostrar <img src="/auth/tenant/logo"> o un placeholder."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    cuit: str | None
+    address: str | None
+    phone: str | None
+    business_email: str | None
+    tax_status: TaxStatus | None
+    has_logo: bool
+
+
+class TenantProfileUpdate(BaseModel):
+    """Todos opcionales -- PATCH parcial, mismo criterio que UserUpdate."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=1)
+    cuit: str | None = None
+    address: str | None = None
+    phone: str | None = None
+    business_email: EmailStr | None = None
+    tax_status: TaxStatus | None = None
 
 
 class SalespersonRead(BaseModel):

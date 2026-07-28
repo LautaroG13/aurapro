@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,8 @@ from app.modules.identity.schemas import (
     InvitationRead,
     ResetPasswordRequest,
     SalespersonRead,
+    TenantProfileRead,
+    TenantProfileUpdate,
     TenantRegister,
     TokenResponse,
     UserLogin,
@@ -33,22 +35,27 @@ from app.modules.identity.services import (
     InvitationAlreadyAcceptedError,
     InvitationExpiredError,
     InvitationNotFoundError,
+    LogoTooLargeError,
     PasswordResetAlreadyUsedError,
     PasswordResetExpiredError,
     PasswordResetNotFoundError,
     TenantSuspendedError,
+    UnsupportedLogoTypeError,
     UserNotFoundError,
     accept_invitation,
     authenticate_user,
     create_invitation,
     delete_user,
     get_invitation_preview,
+    get_tenant,
     issue_token_for_user,
     list_invitations,
     list_salespeople,
     register_tenant,
     request_password_reset,
     reset_password,
+    set_tenant_logo,
+    update_tenant_profile,
     update_user,
 )
 
@@ -132,6 +139,64 @@ async def me(
     result = await db.execute(select(User).where(User.id == current_user.user_id))
     user = result.scalar_one()
     return UserRead.model_validate(user)
+
+
+def _to_tenant_profile_read(tenant: Tenant) -> TenantProfileRead:
+    return TenantProfileRead(
+        name=tenant.name,
+        cuit=tenant.cuit,
+        address=tenant.address,
+        phone=tenant.phone,
+        business_email=tenant.business_email,
+        tax_status=tenant.tax_status,
+        has_logo=tenant.logo is not None,
+    )
+
+
+@router.get("/tenant", response_model=TenantProfileRead)
+async def get_tenant_profile_endpoint(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> TenantProfileRead:
+    tenant = await get_tenant(db, current_user.tenant_id)
+    return _to_tenant_profile_read(tenant)
+
+
+@router.patch("/tenant", response_model=TenantProfileRead)
+async def update_tenant_profile_endpoint(
+    payload: TenantProfileUpdate,
+    current_user: CurrentUser = Depends(require_role(UserRole.ADMIN.value)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> TenantProfileRead:
+    tenant = await update_tenant_profile(db, current_user.tenant_id, payload)
+    return _to_tenant_profile_read(tenant)
+
+
+@router.put("/tenant/logo", response_model=TenantProfileRead)
+async def upload_tenant_logo_endpoint(
+    file: UploadFile = File(...),
+    current_user: CurrentUser = Depends(require_role(UserRole.ADMIN.value)),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> TenantProfileRead:
+    content = await file.read()
+    try:
+        tenant = await set_tenant_logo(db, current_user.tenant_id, content, file.content_type or "")
+    except UnsupportedLogoTypeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except LogoTooLargeError as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
+    return _to_tenant_profile_read(tenant)
+
+
+@router.get("/tenant/logo")
+async def get_tenant_logo_endpoint(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> Response:
+    tenant = await get_tenant(db, current_user.tenant_id)
+    if tenant.logo is None or tenant.logo_content_type is None:
+        raise HTTPException(status_code=404, detail="Este tenant no tiene logo cargado")
+    return Response(content=tenant.logo, media_type=tenant.logo_content_type)
 
 
 @router.get("/users", response_model=list[UserRead])

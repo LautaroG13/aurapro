@@ -17,3 +17,6 @@ httpx==0.27.*
 
 # Comprobantes de venta en PDF
 fpdf2==2.*
+
+# Upload de archivos (logo de la empresa)
+python-multipart==0.0.*

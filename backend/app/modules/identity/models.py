@@ -2,11 +2,12 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, LargeBinary, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.async_base import Base
+from app.shared.tax_status import TaxStatus
 from app.shared.tenant_model import TenantModel
 
 
@@ -37,6 +38,25 @@ class Tenant(Base):
     # pisa bajo lock (FOR UPDATE) dentro de la misma transacción de
     # create_sale, ver app/modules/sales/services.py.
     next_sale_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+
+    # Datos de la empresa -- se estampan en comprobantes/presupuestos.
+    # Todos nullable: una empresa recién creada no tiene por qué haber
+    # cargado esto todavía, y no hay ningún flujo que dependa de que
+    # existan (a diferencia de `name`, que sí es obligatorio desde el alta).
+    cuit: Mapped[str | None] = mapped_column(String, nullable=True)
+    address: Mapped[str | None] = mapped_column(String, nullable=True)
+    phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    business_email: Mapped[str | None] = mapped_column(String, nullable=True)
+    tax_status: Mapped[TaxStatus | None] = mapped_column(
+        Enum(TaxStatus, name="tenant_tax_status", native_enum=False, length=30), nullable=True
+    )
+    # Logo guardado como bytes en la propia DB, no en un storage externo
+    # (no hay ninguno configurado en el proyecto todavía) -- alcanza
+    # para un logo chico, se sirve de vuelta vía GET /auth/tenant/logo
+    # y se embebe directo en los PDF. Límite de tamaño se valida en el
+    # endpoint, no acá.
+    logo: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    logo_content_type: Mapped[str | None] = mapped_column(String, nullable=True)
 
     users: Mapped[list["User"]] = relationship(back_populates="tenant", cascade="all, delete-orphan")
 

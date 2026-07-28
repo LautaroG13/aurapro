@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.security import create_access_token, hash_password, verify_password
 from app.modules.identity.models import Invitation, PasswordReset, Tenant, User, UserRole
-from app.modules.identity.schemas import UserUpdate
+from app.modules.identity.schemas import TenantProfileUpdate, UserUpdate
 
 INVITATION_EXPIRY = timedelta(days=7)
 PASSWORD_RESET_EXPIRY = timedelta(hours=1)
@@ -257,6 +257,48 @@ async def accept_invitation(db: AsyncSession, token: str, password: str) -> User
     await db.commit()
     await db.refresh(user)
     return user
+
+
+# Solo formatos comunes de logo -- svg queda afuera a propósito
+# porque fpdf2 no lo soporta nativamente para embeber en el PDF.
+MAX_LOGO_SIZE_BYTES = 2 * 1024 * 1024
+ALLOWED_LOGO_CONTENT_TYPES = {"image/png", "image/jpeg", "image/webp"}
+
+
+class LogoTooLargeError(Exception):
+    pass
+
+
+class UnsupportedLogoTypeError(Exception):
+    pass
+
+
+async def get_tenant(db: AsyncSession, tenant_id: UUID) -> Tenant:
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    return result.scalar_one()
+
+
+async def update_tenant_profile(db: AsyncSession, tenant_id: UUID, payload: TenantProfileUpdate) -> Tenant:
+    tenant = await get_tenant(db, tenant_id)
+    updates = payload.model_dump(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(tenant, field, value)
+    await db.commit()
+    await db.refresh(tenant)
+    return tenant
+
+
+async def set_tenant_logo(db: AsyncSession, tenant_id: UUID, content: bytes, content_type: str) -> Tenant:
+    if content_type not in ALLOWED_LOGO_CONTENT_TYPES:
+        raise UnsupportedLogoTypeError(f"Tipo de archivo no soportado: {content_type}")
+    if len(content) > MAX_LOGO_SIZE_BYTES:
+        raise LogoTooLargeError("El logo no puede pesar más de 2MB")
+    tenant = await get_tenant(db, tenant_id)
+    tenant.logo = content
+    tenant.logo_content_type = content_type
+    await db.commit()
+    await db.refresh(tenant)
+    return tenant
 
 
 def issue_token_for_user(user: User) -> str:

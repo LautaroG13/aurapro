@@ -59,3 +59,28 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
 
   return res.blob();
 }
+
+/**
+ * Variante de apiFetch para subir un archivo (ej. el logo de la
+ * empresa) -- no fuerza Content-Type: application/json, el browser
+ * arma el boundary de multipart/form-data solo a partir de FormData.
+ */
+export async function apiFetchUpload<T>(path: string, file: File): Promise<T> {
+  const token = getStoredToken();
+  const headers = new Headers();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch(`${API_URL}${path}`, { method: "PUT", headers, body: formData });
+
+  if (!res.ok) {
+    const body: { detail?: string } | null = await res.json().catch(() => null);
+    throw new ApiError(res.status, body?.detail ?? `Error ${res.status}`);
+  }
+
+  return (await res.json()) as T;
+}

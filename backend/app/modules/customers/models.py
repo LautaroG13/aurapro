@@ -1,4 +1,3 @@
-import enum
 import uuid
 
 from sqlalchemy import Enum, ForeignKey, Numeric, String, UniqueConstraint
@@ -7,17 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.async_base import Base
 from app.modules.identity.models import User
+from app.shared.tax_status import TaxStatus as CustomerTaxStatus
 from app.shared.tenant_model import TenantModel
-
-
-class CustomerTaxStatus(str, enum.Enum):
-    """Situación fiscal ante AFIP/ARCA (Argentina). Determina qué tipo
-    de comprobante corresponde emitirle -- relevante para cuando se
-    integre facturación electrónica, no usado todavía en ningún cálculo."""
-
-    RESPONSABLE_INSCRIPTO = "RESPONSABLE_INSCRIPTO"
-    MONOTRIBUTO = "MONOTRIBUTO"
-    EXENTO = "EXENTO"
 
 
 class CustomerType(Base, TenantModel):

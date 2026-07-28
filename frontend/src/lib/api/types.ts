@@ -520,3 +520,30 @@ export interface IntegrationRead {
   config_keys: string[];
   updated_at: string;
 }
+
+/**
+ * Espeja backend/app/modules/identity/schemas.py::TenantProfileRead.
+ * Mismo enum de situación fiscal que CustomerTaxStatus (compartido en
+ * el backend vía app/shared/tax_status.py).
+ */
+export interface TenantProfileRead {
+  name: string;
+  cuit: string | null;
+  address: string | null;
+  phone: string | null;
+  business_email: string | null;
+  tax_status: CustomerTaxStatus | null;
+  has_logo: boolean;
+}
+
+/**
+ * Espeja backend/app/modules/identity/schemas.py::TenantProfileUpdate.
+ */
+export interface TenantProfileUpdate {
+  name?: string | null;
+  cuit?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  business_email?: string | null;
+  tax_status?: CustomerTaxStatus | null;
+}

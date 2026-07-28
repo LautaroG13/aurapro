@@ -4,19 +4,38 @@ entregarle al cliente o archivar. Se genera on-demand en el endpoint
 GET /sales/{id}/receipt, no se persiste el PDF en ningún lado.
 """
 
+from io import BytesIO
+
 from fpdf import FPDF
 
+from app.modules.identity.models import Tenant
 from app.modules.sales.models import Sale
 from app.shared.payment_methods import is_card_payment, payment_method_label
 
 
-def build_sale_receipt_pdf(sale: Sale, tenant_name: str, customer_name: str) -> bytes:
+def build_sale_receipt_pdf(sale: Sale, tenant: Tenant, customer_name: str) -> bytes:
     pdf = FPDF(format="A5")
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
 
+    # Logo arriba a la derecha, chico, para no pisar el texto de la
+    # izquierda -- si no hay logo cargado (tenant.logo es None) no se
+    # dibuja nada, el layout de texto queda igual que antes.
+    if tenant.logo is not None:
+        pdf.image(BytesIO(tenant.logo), x=pdf.w - 35, y=8, w=25)
+
     pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, tenant_name, new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 10, tenant.name, new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_font("Helvetica", "", 9)
+    if tenant.cuit:
+        pdf.cell(0, 5, f"CUIT: {tenant.cuit}", new_x="LMARGIN", new_y="NEXT")
+    if tenant.address:
+        pdf.cell(0, 5, tenant.address, new_x="LMARGIN", new_y="NEXT")
+    if tenant.phone or tenant.business_email:
+        contact = " - ".join(filter(None, [tenant.phone, tenant.business_email]))
+        pdf.cell(0, 5, contact, new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
 
     pdf.set_font("Helvetica", "", 11)
     pdf.cell(0, 7, "Comprobante de venta", new_x="LMARGIN", new_y="NEXT")
