@@ -405,6 +405,16 @@ export interface CustomerAccountRead {
 }
 
 /**
+ * Espeja backend/app/modules/treasury/schemas.py::CustomerBalanceRead.
+ */
+export interface CustomerBalanceRead {
+  customer_id: string;
+  customer_name: string;
+  balance: number;
+  credit_limit: number | null;
+}
+
+/**
  * Espeja backend/app/modules/treasury/schemas.py::CustomerPaymentCreate.
  */
 export interface CustomerPaymentCreate {

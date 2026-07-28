@@ -15,6 +15,7 @@ from app.modules.treasury.schemas import (
     CashSessionOpen,
     CashSessionRead,
     CustomerAccountRead,
+    CustomerBalanceRead,
     CustomerPaymentCreate,
     PaymentMethodSummary,
 )
@@ -29,6 +30,7 @@ from app.modules.treasury.services import (
     get_cash_session_sales_summary,
     get_customer_account,
     get_open_cash_session,
+    list_customer_balances,
     open_cash_session,
     record_customer_payment,
 )
@@ -36,6 +38,27 @@ from app.modules.treasury.services import (
 router = APIRouter()
 
 WRITE_ROLES = (UserRole.ADMIN.value, UserRole.VENDEDOR.value)
+
+
+@router.get("/customer-accounts", response_model=list[CustomerBalanceRead])
+async def list_customer_accounts_endpoint(
+    _current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_tenant_db),
+) -> list[CustomerBalanceRead]:
+    """Vista general de cuenta corriente: un renglón por cliente con su
+    saldo, para no tener que entrar a cada uno por separado. Path
+    literal aparte de /customers/{customer_id}/account a propósito --
+    evita cualquier ambigüedad de ruteo con el UUID."""
+    rows = await list_customer_balances(db)
+    return [
+        CustomerBalanceRead(
+            customer_id=customer.id,
+            customer_name=customer.name,
+            balance=balance,
+            credit_limit=float(customer.credit_limit) if customer.credit_limit is not None else None,
+        )
+        for customer, balance in rows
+    ]
 
 
 @router.get("/customers/{customer_id}/account", response_model=CustomerAccountRead)

@@ -12,6 +12,7 @@ const PAGE_TITLES: Array<[string, string]> = [
   ["/customers", "Clientes"],
   ["/sales", "Ventas"],
   ["/cash", "Caja"],
+  ["/accounts", "Cuenta corriente"],
   ["/team", "Equipo"],
   ["/company", "Empresa"],
   ["/integrations", "Integraciones"],

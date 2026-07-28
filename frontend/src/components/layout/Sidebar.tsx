@@ -23,6 +23,7 @@ export function Sidebar({ isSuperadmin, isAdmin }: SidebarProps) {
         <NavLink href="/products">Productos</NavLink>
         <NavLink href="/customers">Clientes</NavLink>
         <NavLink href="/cash">Caja</NavLink>
+        <NavLink href="/accounts">Cuenta corriente</NavLink>
         {isAdmin && <NavLink href="/team">Equipo</NavLink>}
         {isAdmin && <NavLink href="/company">Empresa</NavLink>}
         {isAdmin && <NavLink href="/integrations">Integraciones</NavLink>}

@@ -79,6 +79,25 @@ async def get_customer_account(db: AsyncSession, customer_id: UUID) -> tuple[flo
     return balance, list(result.scalars().all())
 
 
+async def list_customer_balances(db: AsyncSession) -> list[tuple[Customer, float]]:
+    """Vista general de cuenta corriente: un balance por cliente en una
+    sola query agregada (en vez de N llamadas a get_customer_balance
+    desde el frontend). LEFT JOIN a propósito -- un cliente sin
+    movimientos todavía tiene que aparecer con saldo 0, no desaparecer
+    de la lista. Ordenado por saldo descendente: a quién más se le
+    tiene que cobrar, primero."""
+    debit = case((AccountMovement.type == AccountMovementType.DEBIT, AccountMovement.amount), else_=0)
+    credit = case((AccountMovement.type == AccountMovementType.CREDIT, AccountMovement.amount), else_=0)
+    balance_expr = func.coalesce(func.sum(debit), 0) - func.coalesce(func.sum(credit), 0)
+    result = await db.execute(
+        select(Customer, balance_expr)
+        .outerjoin(AccountMovement, AccountMovement.customer_id == Customer.id)
+        .group_by(Customer.id)
+        .order_by(balance_expr.desc())
+    )
+    return [(customer, float(balance)) for customer, balance in result.all()]
+
+
 async def record_sale_on_account(db: AsyncSession, tenant_id: UUID, customer: Customer, sale) -> None:
     if customer.credit_limit is not None:
         balance = await get_customer_balance(db, customer.id)

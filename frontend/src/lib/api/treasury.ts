@@ -6,9 +6,14 @@ import type {
   CashSessionOpen,
   CashSessionRead,
   CustomerAccountRead,
+  CustomerBalanceRead,
   CustomerPaymentCreate,
   PaymentMethodSummary,
 } from "./types";
+
+export async function listCustomerAccounts(): Promise<CustomerBalanceRead[]> {
+  return apiFetch<CustomerBalanceRead[]>("/api/v1/treasury/customer-accounts");
+}
 
 export async function getCustomerAccount(customerId: string): Promise<CustomerAccountRead> {
   return apiFetch<CustomerAccountRead>(`/api/v1/treasury/customers/${customerId}/account`);

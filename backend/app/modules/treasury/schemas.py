@@ -26,6 +26,19 @@ class CustomerAccountRead(BaseModel):
     movements: list[AccountMovementRead]
 
 
+class CustomerBalanceRead(BaseModel):
+    """Fila de la vista general de cuenta corriente (/treasury/customer-accounts)
+    -- un resumen por cliente, no el detalle de movimientos (eso sigue
+    siendo CustomerAccountRead, al entrar al cliente puntual)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    customer_id: UUID
+    customer_name: str
+    balance: float
+    credit_limit: float | None
+
+
 class CustomerPaymentCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

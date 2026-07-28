@@ -34,6 +34,10 @@ export function CustomerAccount({ customer }: CustomerAccountProps) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customerAccount", customer.id] });
+      // También invalida la vista general de /accounts, que muestra el
+      // mismo saldo resumido por cliente -- si no, queda desactualizada
+      // hasta el próximo refetch natural.
+      queryClient.invalidateQueries({ queryKey: ["customerAccounts"] });
       setAmount("");
       setDescription("");
     },
