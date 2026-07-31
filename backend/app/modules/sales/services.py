@@ -24,6 +24,8 @@ from sqlalchemy.orm import selectinload
 
 from app.modules.customers.models import Customer
 from app.modules.identity.models import Tenant
+from app.modules.order_notes.models import OrderNote, OrderNoteStatus
+from app.modules.order_notes.services import OrderNoteNotFoundError, OrderNoteNotPendingError
 from app.modules.products.models import Product, ProductVariant
 from app.modules.sales.models import Sale, SaleItem, SaleStatus
 from app.modules.sales.schemas import SaleCreate
@@ -92,6 +94,19 @@ async def create_sale(db: AsyncSession, tenant_id: UUID, payload: SaleCreate) ->
     ).scalar_one_or_none()
     if customer is None:
         raise CustomerNotFoundError(f"Cliente {payload.customer_id} no encontrado")
+
+    # Si esta venta levanta una nota de pedido, se valida y lockea acá
+    # (fail-fast, antes de tocar stock) -- el update real (INVOICED +
+    # sale_id) recién se aplica después de flush(), cuando sale.id existe.
+    order_note: OrderNote | None = None
+    if payload.order_note_id is not None:
+        order_note = await _lock_for_update(db, OrderNote, payload.order_note_id)
+        if order_note is None:
+            raise OrderNoteNotFoundError(f"Nota de pedido {payload.order_note_id} no encontrada")
+        if order_note.status != OrderNoteStatus.PENDING:
+            raise OrderNoteNotPendingError(
+                f"La nota de pedido {payload.order_note_id} no está pendiente (está {order_note.status.value})"
+            )
 
     sale_items: list[SaleItem] = []
     product_details_for_event: list[dict] = []
@@ -165,6 +180,10 @@ async def create_sale(db: AsyncSession, tenant_id: UUID, payload: SaleCreate) ->
     sale.items = sale_items
     db.add(sale)
     await db.flush()  # asigna sale.id sin cerrar la transacción
+
+    if order_note is not None:
+        order_note.status = OrderNoteStatus.INVOICED
+        order_note.sale_id = sale.id
 
     # Enganche con tesorería, misma transacción que la venta: si el
     # crédito no alcanza, InsufficientCreditError se propaga sin

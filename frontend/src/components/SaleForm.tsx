@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { listCustomers, listCustomerTypes } from "@/lib/api/customers";
+import { listOrderNotes } from "@/lib/api/orderNotes";
 import { listProducts } from "@/lib/api/products";
 import { createSale, downloadSaleReceipt } from "@/lib/api/sales";
 import type { ProductRead, ProductVariantRead } from "@/lib/api/types";
@@ -30,8 +31,11 @@ export function SaleForm() {
   const productsQuery = useQuery({ queryKey: ["products"], queryFn: listProducts });
   // Comparte queryKey con CustomerForm -- React Query dedupea.
   const customerTypesQuery = useQuery({ queryKey: ["customerTypes"], queryFn: listCustomerTypes });
+  const orderNotesQuery = useQuery({ queryKey: ["orderNotes"], queryFn: listOrderNotes });
+  const pendingOrderNotes = orderNotesQuery.data?.filter((n) => n.status === "PENDING") ?? [];
 
   const [customerId, setCustomerId] = useState("");
+  const [orderNoteId, setOrderNoteId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS[0]);
   const [cardCouponNumber, setCardCouponNumber] = useState("");
   const [cardAuthorizationCode, setCardAuthorizationCode] = useState("");
@@ -102,6 +106,26 @@ export function SaleForm() {
     setCart((prev) => prev.filter((line) => lineKey(line.product.id, line.variant?.id ?? null) !== key));
   }
 
+  // Precarga cliente + carrito desde una nota de pedido pendiente. Los
+  // ids de producto/variante se resuelven contra productsQuery.data ya
+  // cargado -- si algún producto fue borrado no se agrega esa línea.
+  function loadOrderNote(id: string) {
+    setOrderNoteId(id);
+    if (!id) return;
+    const note = orderNotesQuery.data?.find((n) => n.id === id);
+    if (!note) return;
+    setCustomerId(note.customer_id);
+    const products = productsQuery.data ?? [];
+    const lines: CartLine[] = [];
+    for (const item of note.items) {
+      const product = products.find((p) => p.id === item.product_id);
+      if (!product) continue;
+      const variant = item.variant_id ? (product.variants.find((v) => v.id === item.variant_id) ?? null) : null;
+      lines.push({ product, variant, quantity: item.quantity });
+    }
+    setCart(lines);
+  }
+
   const saleMutation = useMutation({
     mutationFn: () =>
       createSale({
@@ -114,17 +138,20 @@ export function SaleForm() {
         })),
         card_coupon_number: isCardPayment(paymentMethod) ? cardCouponNumber || null : null,
         card_authorization_code: isCardPayment(paymentMethod) ? cardAuthorizationCode || null : null,
+        order_note_id: orderNoteId || null,
       }),
     onSuccess: () => {
       setCart([]);
       setCustomerId("");
       setCardCouponNumber("");
       setCardAuthorizationCode("");
+      setOrderNoteId("");
       // el stock mostrado en la lista de productos cambió del lado del
       // servidor (aunque el descuento real lo haga el worker en
       // background de forma asíncrona, current_stock no se mueve acá)
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["orderNotes"] });
     },
   });
 
@@ -133,6 +160,24 @@ export function SaleForm() {
   return (
     <div className="aura-card flex flex-col gap-5">
       <h2>Nueva venta</h2>
+
+      {pendingOrderNotes.length > 0 && (
+        <label className="aura-label">
+          Cargar desde nota de pedido (opcional)
+          <select
+            value={orderNoteId}
+            onChange={(e) => loadOrderNote(e.target.value)}
+            className="aura-select"
+          >
+            <option value="">Sin nota de pedido...</option>
+            {pendingOrderNotes.map((note) => (
+              <option key={note.id} value={note.id}>
+                N° {String(note.order_note_number).padStart(6, "0")} — ${note.total_amount.toFixed(2)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="aura-label">

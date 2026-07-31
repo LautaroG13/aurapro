@@ -356,6 +356,7 @@ export interface SaleCreate {
   items: SaleItemCreate[];
   card_coupon_number?: string | null;
   card_authorization_code?: string | null;
+  order_note_id?: string | null;
 }
 
 /**
@@ -436,6 +437,56 @@ export interface QuoteRead {
   valid_until: string | null;
   created_at: string;
   items: QuoteItemRead[];
+}
+
+/**
+ * Espeja backend/app/modules/order_notes/models.py::OrderNoteStatus.
+ */
+export type OrderNoteStatus = "PENDING" | "INVOICED" | "CANCELLED";
+
+/**
+ * Espeja backend/app/modules/order_notes/schemas.py::OrderNoteItemCreate.
+ */
+export interface OrderNoteItemCreate {
+  product_id: string;
+  variant_id?: string | null;
+  quantity: number;
+}
+
+/**
+ * Espeja backend/app/modules/order_notes/schemas.py::OrderNoteCreate.
+ */
+export interface OrderNoteCreate {
+  customer_id: string;
+  currency?: string;
+  items: OrderNoteItemCreate[];
+}
+
+/**
+ * Espeja backend/app/modules/order_notes/schemas.py::OrderNoteItemRead.
+ */
+export interface OrderNoteItemRead {
+  id: string;
+  product_id: string;
+  variant_id: string | null;
+  quantity: number;
+  unit_price: number;
+}
+
+/**
+ * Espeja backend/app/modules/order_notes/schemas.py::OrderNoteRead.
+ */
+export interface OrderNoteRead {
+  id: string;
+  tenant_id: string;
+  customer_id: string;
+  order_note_number: number;
+  total_amount: number;
+  currency: string;
+  status: OrderNoteStatus;
+  sale_id: string | null;
+  created_at: string;
+  items: OrderNoteItemRead[];
 }
 
 /**

@@ -30,6 +30,12 @@ class SaleCreate(BaseModel):
     # el modelo Sale.
     card_coupon_number: str | None = None
     card_authorization_code: str | None = None
+    # Si viene, esta venta "levanta" esa nota de pedido: al confirmarse
+    # la venta, la nota pasa a INVOICED y queda linkeada (ver
+    # create_sale). Los items de la venta siguen siendo los de
+    # `items` de arriba -- el frontend los precarga desde la nota, acá
+    # no se recalculan solos.
+    order_note_id: UUID | None = None
 
 
 class SaleItemRead(BaseModel):
