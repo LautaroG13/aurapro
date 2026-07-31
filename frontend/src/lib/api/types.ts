@@ -388,6 +388,57 @@ export interface SaleRead {
 }
 
 /**
+ * Espeja backend/app/modules/quotes/models.py::QuoteStatus.
+ */
+export type QuoteStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED";
+
+/**
+ * Espeja backend/app/modules/quotes/schemas.py::QuoteItemCreate.
+ */
+export interface QuoteItemCreate {
+  product_id: string;
+  variant_id?: string | null;
+  quantity: number;
+}
+
+/**
+ * Espeja backend/app/modules/quotes/schemas.py::QuoteCreate.
+ */
+export interface QuoteCreate {
+  customer_id: string;
+  currency?: string;
+  valid_until?: string | null;
+  items: QuoteItemCreate[];
+}
+
+/**
+ * Espeja backend/app/modules/quotes/schemas.py::QuoteItemRead.
+ */
+export interface QuoteItemRead {
+  id: string;
+  product_id: string;
+  variant_id: string | null;
+  quantity: number;
+  unit_price: number;
+}
+
+/**
+ * Espeja backend/app/modules/quotes/schemas.py::QuoteRead.
+ */
+export interface QuoteRead {
+  id: string;
+  tenant_id: string;
+  customer_id: string;
+  quote_number: number;
+  total_amount: number;
+  currency: string;
+  status: QuoteStatus;
+  valid_until: string | null;
+  created_at: string;
+  items: QuoteItemRead[];
+}
+
+/**
  * Espeja backend/app/modules/treasury/schemas.py::AccountMovementRead.
  */
 export interface AccountMovementRead {

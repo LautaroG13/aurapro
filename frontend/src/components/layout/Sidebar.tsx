@@ -20,6 +20,7 @@ export function Sidebar({ isSuperadmin, isAdmin }: SidebarProps) {
       <nav className="flex flex-1 flex-col gap-0.5 pl-1">
         <NavLink href="/">Inicio</NavLink>
         <NavLink href="/sales">Ventas</NavLink>
+        <NavLink href="/quotes">Presupuestos</NavLink>
         <NavLink href="/products">Productos</NavLink>
         <NavLink href="/customers">Clientes</NavLink>
         <NavLink href="/cash">Caja</NavLink>

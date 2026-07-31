@@ -29,6 +29,7 @@ from app.modules.customers import models as customers_models  # noqa: F401
 from app.modules.sales import models as sales_models  # noqa: F401
 from app.modules.treasury import models as treasury_models  # noqa: F401
 from app.modules.integrations import models as integrations_models  # noqa: F401
+from app.modules.quotes import models as quotes_models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

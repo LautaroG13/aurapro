@@ -38,6 +38,9 @@ class Tenant(Base):
     # pisa bajo lock (FOR UPDATE) dentro de la misma transacción de
     # create_sale, ver app/modules/sales/services.py.
     next_sale_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    # Mismo criterio que next_sale_number pero para Quote.quote_number
+    # -- contador propio, no comparte secuencia con las ventas.
+    next_quote_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
 
     # Datos de la empresa -- se estampan en comprobantes/presupuestos.
     # Todos nullable: una empresa recién creada no tiene por qué haber
