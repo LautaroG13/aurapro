@@ -42,6 +42,10 @@ class OrderNoteNotPendingError(Exception):
     pass
 
 
+class OrderNoteCustomerMismatchError(Exception):
+    pass
+
+
 class CannotSetInvoicedManuallyError(Exception):
     pass
 

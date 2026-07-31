@@ -73,11 +73,15 @@ export function OrderNoteForm() {
     });
   }
 
+  // min={1} en el input es solo un hint de HTML -- sin este clamp se
+  // puede mandar quantity 0 al backend (el campo vacío mientras se
+  // reescribe da Number("") === 0), que lo rechaza con 422.
   function updateQuantity(productId: string, variantId: string | null, quantity: number) {
     const key = lineKey(productId, variantId);
+    const clamped = Math.max(1, Math.trunc(quantity) || 1);
     setCart((prev) =>
       prev.map((line) =>
-        lineKey(line.product.id, line.variant?.id ?? null) === key ? { ...line, quantity } : line,
+        lineKey(line.product.id, line.variant?.id ?? null) === key ? { ...line, quantity: clamped } : line,
       ),
     );
   }

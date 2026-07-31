@@ -128,10 +128,17 @@ async def _count_admins(db: AsyncSession) -> int:
     return result.scalar_one()
 
 
-async def update_user(db: AsyncSession, user_id: UUID, payload: UserUpdate) -> User:
+async def update_user(db: AsyncSession, tenant_id: UUID, user_id: UUID, payload: UserUpdate) -> User:
     user = await _get_user(db, user_id)
     updates = payload.model_dump(exclude_unset=True, exclude={"new_password"})
     if "role" in updates and updates["role"] != UserRole.ADMIN and user.role == UserRole.ADMIN:
+        # Lock sobre Tenant antes de contar: sin esto, dos requests
+        # concurrentes degradando a dos ADMIN distintos del mismo
+        # tenant pueden ambas leer count==2 antes de que la otra haga
+        # commit, y ambas pasan el chequeo -- el tenant queda sin
+        # ningún admin. El lock serializa la segunda hasta que la
+        # primera confirme (o revierta) su cambio de rol.
+        await db.execute(select(Tenant.id).where(Tenant.id == tenant_id).with_for_update())
         if await _count_admins(db) <= 1:
             raise CannotDemoteLastAdminError(
                 "No se puede quitar el rol ADMIN al único administrador del tenant"
@@ -145,12 +152,15 @@ async def update_user(db: AsyncSession, user_id: UUID, payload: UserUpdate) -> U
     return user
 
 
-async def delete_user(db: AsyncSession, user_id: UUID, current_user_id: UUID) -> None:
+async def delete_user(db: AsyncSession, tenant_id: UUID, user_id: UUID, current_user_id: UUID) -> None:
     if user_id == current_user_id:
         raise CannotDeleteSelfError("No podés eliminar tu propia cuenta desde acá")
     user = await _get_user(db, user_id)
-    if user.role == UserRole.ADMIN and await _count_admins(db) <= 1:
-        raise CannotDeleteLastAdminError("No se puede eliminar al único administrador del tenant")
+    if user.role == UserRole.ADMIN:
+        # Mismo lock que en update_user -- ver ese comentario.
+        await db.execute(select(Tenant.id).where(Tenant.id == tenant_id).with_for_update())
+        if await _count_admins(db) <= 1:
+            raise CannotDeleteLastAdminError("No se puede eliminar al único administrador del tenant")
     await db.delete(user)
     await db.commit()
 
@@ -197,7 +207,18 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> Use
 async def create_invitation(
     db: AsyncSession, tenant_id: UUID, invited_by_user_id: UUID, email: str, role: UserRole
 ) -> Invitation:
-    existing = await db.execute(select(User).where(User.email == email))
+    # User.email es único GLOBAL, no por tenant (ver el comentario en
+    # User.__table_args__), pero esta función corre en una sesión
+    # tenant-scoped (get_tenant_db) que le inyecta un filtro
+    # tenant_id automático a cualquier SELECT sobre User. Sin
+    # skip_tenant_filter, este chequeo solo mira usuarios del propio
+    # tenant, así que un email ya registrado en OTRO tenant pasa
+    # como "libre" acá y la invitación se crea -- para recién fallar
+    # después, de forma confusa, cuando el invitado intenta aceptarla
+    # (accept_invitation sí hace el chequeo global correctamente).
+    existing = await db.execute(
+        select(User).where(User.email == email).execution_options(skip_tenant_filter=True)
+    )
     if existing.scalar_one_or_none() is not None:
         raise EmailAlreadyRegisteredError(f"{email} ya está registrado")
 

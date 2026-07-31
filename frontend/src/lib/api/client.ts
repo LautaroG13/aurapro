@@ -12,6 +12,30 @@ export class ApiError extends Error {
 }
 
 /**
+ * `detail` en un error de FastAPI puede ser un string (HTTPException
+ * escrita a mano, ej. "Cliente no encontrado") o un array de objetos
+ * de validación de Pydantic (422 default, ej. Field(gt=0) fallido) --
+ * sin este chequeo, el array se coacciona a string y termina
+ * mostrando "[object Object]" en el aura-alert de cada form.
+ */
+function extractErrorMessage(body: unknown, status: number): string {
+  if (body && typeof body === "object" && "detail" in body) {
+    const detail = (body as { detail: unknown }).detail;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      return detail
+        .map((item) =>
+          item && typeof item === "object" && "msg" in item
+            ? String((item as { msg: unknown }).msg)
+            : JSON.stringify(item),
+        )
+        .join("; ");
+    }
+  }
+  return `Error ${status}`;
+}
+
+/**
  * fetch autenticado compartido por products/customers/sales -- adjunta
  * el JWT guardado (ver lib/auth.ts) si existe. Los endpoints
  * legacy (analytics, system) no lo usan porque no requieren auth.
@@ -27,8 +51,8 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
 
   if (!res.ok) {
-    const body: { detail?: string } | null = await res.json().catch(() => null);
-    throw new ApiError(res.status, body?.detail ?? `Error ${res.status}`);
+    const body: unknown = await res.json().catch(() => null);
+    throw new ApiError(res.status, extractErrorMessage(body, res.status));
   }
 
   if (res.status === 204) {
@@ -53,8 +77,8 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
   const res = await fetch(`${API_URL}${path}`, { headers });
 
   if (!res.ok) {
-    const body: { detail?: string } | null = await res.json().catch(() => null);
-    throw new ApiError(res.status, body?.detail ?? `Error ${res.status}`);
+    const body: unknown = await res.json().catch(() => null);
+    throw new ApiError(res.status, extractErrorMessage(body, res.status));
   }
 
   return res.blob();
@@ -78,8 +102,8 @@ export async function apiFetchUpload<T>(path: string, file: File): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, { method: "PUT", headers, body: formData });
 
   if (!res.ok) {
-    const body: { detail?: string } | null = await res.json().catch(() => null);
-    throw new ApiError(res.status, body?.detail ?? `Error ${res.status}`);
+    const body: unknown = await res.json().catch(() => null);
+    throw new ApiError(res.status, extractErrorMessage(body, res.status));
   }
 
   return (await res.json()) as T;

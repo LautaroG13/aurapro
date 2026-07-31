@@ -60,8 +60,11 @@ async def get_customer_balance(db: AsyncSession, customer_id: UUID) -> float:
     return float(result.scalar_one())
 
 
-async def _get_customer(db: AsyncSession, customer_id: UUID) -> Customer:
-    result = await db.execute(select(Customer).where(Customer.id == customer_id))
+async def _get_customer(db: AsyncSession, customer_id: UUID, for_update: bool = False) -> Customer:
+    query = select(Customer).where(Customer.id == customer_id)
+    if for_update:
+        query = query.with_for_update()
+    result = await db.execute(query)
     customer = result.scalar_one_or_none()
     if customer is None:
         raise CustomerNotFoundError(f"Cliente {customer_id} no encontrado")
@@ -100,6 +103,14 @@ async def list_customer_balances(db: AsyncSession) -> list[tuple[Customer, float
 
 async def record_sale_on_account(db: AsyncSession, tenant_id: UUID, customer: Customer, sale) -> None:
     if customer.credit_limit is not None:
+        # Lock de fila sobre el cliente antes de leer el balance: sin
+        # esto, dos ventas a crédito concurrentes para el mismo cliente
+        # pueden leer el mismo saldo "viejo" (ninguna ve el
+        # AccountMovement sin commit de la otra) y ambas pasar el
+        # chequeo, superando credit_limit. El lock serializa: la
+        # segunda espera a que la primera haga commit (o rollback)
+        # antes de calcular su propio balance.
+        await db.execute(select(Customer.id).where(Customer.id == customer.id).with_for_update())
         balance = await get_customer_balance(db, customer.id)
         total = float(sale.total_amount)
         limit = float(customer.credit_limit)
@@ -146,7 +157,11 @@ async def record_customer_payment(
     payment_method: str,
     description: str | None,
 ) -> AccountMovement:
-    await _get_customer(db, customer_id)
+    # for_update=True por el mismo motivo que en record_sale_on_account
+    # -- un cobro no chequea límite, pero el lock evita que un cobro y
+    # una venta a crédito concurrentes para el mismo cliente calculen
+    # el balance en base a una lectura que todavía no ve al otro.
+    await _get_customer(db, customer_id, for_update=True)
     movement = AccountMovement(
         tenant_id=tenant_id,
         customer_id=customer_id,

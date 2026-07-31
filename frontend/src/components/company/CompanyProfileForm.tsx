@@ -12,6 +12,11 @@ function LogoUploader({ hasLogo }: { hasLogo: boolean }) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // Reemplazar un logo existente no cambia hasLogo (sigue en true
+  // antes y después) -- sin este contador, el efecto de abajo no
+  // tenía ningún motivo para volver a correr, así que el preview
+  // seguía mostrando el logo viejo hasta un reload completo.
+  const [logoVersion, setLogoVersion] = useState(0);
 
   useEffect(() => {
     if (!hasLogo) {
@@ -32,12 +37,13 @@ function LogoUploader({ hasLogo }: { hasLogo: boolean }) {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [hasLogo]);
+  }, [hasLogo, logoVersion]);
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => uploadTenantLogo(file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tenantProfile"] });
+      setLogoVersion((v) => v + 1);
     },
   });
 

@@ -25,7 +25,11 @@ from sqlalchemy.orm import selectinload
 from app.modules.customers.models import Customer
 from app.modules.identity.models import Tenant
 from app.modules.order_notes.models import OrderNote, OrderNoteStatus
-from app.modules.order_notes.services import OrderNoteNotFoundError, OrderNoteNotPendingError
+from app.modules.order_notes.services import (
+    OrderNoteCustomerMismatchError,
+    OrderNoteNotFoundError,
+    OrderNoteNotPendingError,
+)
 from app.modules.products.models import Product, ProductVariant
 from app.modules.sales.models import Sale, SaleItem, SaleStatus
 from app.modules.sales.schemas import SaleCreate
@@ -106,6 +110,10 @@ async def create_sale(db: AsyncSession, tenant_id: UUID, payload: SaleCreate) ->
         if order_note.status != OrderNoteStatus.PENDING:
             raise OrderNoteNotPendingError(
                 f"La nota de pedido {payload.order_note_id} no está pendiente (está {order_note.status.value})"
+            )
+        if order_note.customer_id != customer.id:
+            raise OrderNoteCustomerMismatchError(
+                f"La nota de pedido {payload.order_note_id} pertenece a otro cliente"
             )
 
     sale_items: list[SaleItem] = []

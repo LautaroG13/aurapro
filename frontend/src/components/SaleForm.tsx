@@ -36,6 +36,7 @@ export function SaleForm() {
 
   const [customerId, setCustomerId] = useState("");
   const [orderNoteId, setOrderNoteId] = useState("");
+  const [loadNoteWarnings, setLoadNoteWarnings] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS[0]);
   const [cardCouponNumber, setCardCouponNumber] = useState("");
   const [cardAuthorizationCode, setCardAuthorizationCode] = useState("");
@@ -92,12 +93,19 @@ export function SaleForm() {
     });
   }
 
+  // El input tiene min={1}/max={maxStock} como hint de HTML, pero eso
+  // no bloquea un valor programático (ej. el campo vacío mientras se
+  // reescribe da Number("") === 0) -- sin este clamp se puede mandar
+  // quantity 0 al backend, que lo rechaza con 422.
   function updateQuantity(productId: string, variantId: string | null, quantity: number) {
     const key = lineKey(productId, variantId);
     setCart((prev) =>
-      prev.map((line) =>
-        lineKey(line.product.id, line.variant?.id ?? null) === key ? { ...line, quantity } : line,
-      ),
+      prev.map((line) => {
+        if (lineKey(line.product.id, line.variant?.id ?? null) !== key) return line;
+        const maxStock = line.variant ? line.variant.stock : line.product.current_stock;
+        const clamped = Math.max(1, Math.min(Math.trunc(quantity) || 1, maxStock));
+        return { ...line, quantity: clamped };
+      }),
     );
   }
 
@@ -108,22 +116,48 @@ export function SaleForm() {
 
   // Precarga cliente + carrito desde una nota de pedido pendiente. Los
   // ids de producto/variante se resuelven contra productsQuery.data ya
-  // cargado -- si algún producto fue borrado no se agrega esa línea.
+  // cargado -- si algún producto fue borrado, dado de baja, o si la
+  // variante pedida ya no existe, esa línea se omite en vez de
+  // agregarse mal (ej. contra el stock del producto base). La
+  // cantidad se clampea al stock vigente por si bajó desde que se
+  // armó la nota -- el input también lo re-clampea, pero conviene no
+  // arrancar ya por encima del máximo.
   function loadOrderNote(id: string) {
-    setOrderNoteId(id);
-    if (!id) return;
+    if (!id) {
+      setOrderNoteId("");
+      setLoadNoteWarnings([]);
+      return;
+    }
     const note = orderNotesQuery.data?.find((n) => n.id === id);
     if (!note) return;
+    if (cart.length > 0 && !window.confirm("Esto va a reemplazar el carrito actual. ¿Continuar?")) {
+      return;
+    }
+    setOrderNoteId(id);
     setCustomerId(note.customer_id);
     const products = productsQuery.data ?? [];
     const lines: CartLine[] = [];
+    const warnings: string[] = [];
     for (const item of note.items) {
       const product = products.find((p) => p.id === item.product_id);
-      if (!product) continue;
+      if (!product || !product.is_active) {
+        warnings.push(`Se omitió "${product?.name ?? item.product_id}": ya no está disponible.`);
+        continue;
+      }
       const variant = item.variant_id ? (product.variants.find((v) => v.id === item.variant_id) ?? null) : null;
-      lines.push({ product, variant, quantity: item.quantity });
+      if (item.variant_id && !variant) {
+        warnings.push(`Se omitió "${product.name}": la variante pedida ya no existe.`);
+        continue;
+      }
+      const maxStock = variant ? variant.stock : product.current_stock;
+      if (maxStock <= 0) {
+        warnings.push(`Se omitió "${product.name}": sin stock disponible.`);
+        continue;
+      }
+      lines.push({ product, variant, quantity: Math.min(item.quantity, maxStock) });
     }
     setCart(lines);
+    setLoadNoteWarnings(warnings);
   }
 
   const saleMutation = useMutation({
@@ -146,12 +180,23 @@ export function SaleForm() {
       setCardCouponNumber("");
       setCardAuthorizationCode("");
       setOrderNoteId("");
+      setLoadNoteWarnings([]);
       // el stock mostrado en la lista de productos cambió del lado del
       // servidor (aunque el descuento real lo haga el worker en
       // background de forma asíncrona, current_stock no se mueve acá)
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["orderNotes"] });
+      // create_sale también puede tocar cuenta corriente (pago
+      // "account") o caja (pago "cash") del lado del servidor -- sin
+      // esto, Cuenta Corriente/Caja quedan mostrando datos viejos
+      // hasta un reload manual. Match parcial por diseño: invalida
+      // cualquier ["customerAccount", id] cacheado, no solo el del
+      // cliente de esta venta.
+      queryClient.invalidateQueries({ queryKey: ["customerAccount"] });
+      queryClient.invalidateQueries({ queryKey: ["customerAccounts"] });
+      queryClient.invalidateQueries({ queryKey: ["currentCashSession"] });
+      queryClient.invalidateQueries({ queryKey: ["cashSessionSalesSummary"] });
     },
   });
 
@@ -177,6 +222,13 @@ export function SaleForm() {
             ))}
           </select>
         </label>
+      )}
+      {loadNoteWarnings.length > 0 && (
+        <ul className="flex flex-col gap-1 text-sm text-warn">
+          {loadNoteWarnings.map((warning) => (
+            <li key={warning}>{warning}</li>
+          ))}
+        </ul>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">

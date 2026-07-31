@@ -7,7 +7,11 @@ from app.db.tenant_session import get_tenant_db
 from app.modules.identity.dependencies import CurrentUser, get_current_user, require_role
 from app.modules.identity.models import UserRole
 from app.modules.identity.services import get_tenant
-from app.modules.order_notes.services import OrderNoteNotFoundError, OrderNoteNotPendingError
+from app.modules.order_notes.services import (
+    OrderNoteCustomerMismatchError,
+    OrderNoteNotFoundError,
+    OrderNoteNotPendingError,
+)
 from app.modules.sales.pdf import build_sale_receipt_pdf
 from app.modules.sales.schemas import SaleCreate, SaleRead
 from app.modules.sales.services import (
@@ -52,6 +56,8 @@ async def create_sale_endpoint(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except OrderNoteNotPendingError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except OrderNoteCustomerMismatchError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return SaleRead.model_validate(sale)
 
 

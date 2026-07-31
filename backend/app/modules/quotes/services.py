@@ -37,6 +37,10 @@ class QuoteNotFoundError(Exception):
     pass
 
 
+class QuoteNotPendingError(Exception):
+    pass
+
+
 async def create_quote(db: AsyncSession, tenant_id: UUID, payload: QuoteCreate) -> Quote:
     customer = (
         await db.execute(
@@ -132,7 +136,14 @@ async def get_quote(db: AsyncSession, quote_id: UUID) -> Quote:
 
 
 async def update_quote_status(db: AsyncSession, quote_id: UUID, status: QuoteStatus) -> Quote:
+    # Mismo criterio que OrderNote: solo se puede resolver un
+    # presupuesto pendiente. Sin este chequeo se podía re-aceptar/
+    # re-rechazar uno ya resuelto, o volver a PENDING uno ya cerrado.
     quote = await get_quote(db, quote_id)
+    if quote.status != QuoteStatus.PENDING:
+        raise QuoteNotPendingError(
+            f"El presupuesto {quote_id} no está pendiente (está {quote.status.value})"
+        )
     quote.status = status
     await db.commit()
     await db.refresh(quote, attribute_names=["items"])

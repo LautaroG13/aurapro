@@ -58,6 +58,16 @@ async def get_tenant_db(request: Request) -> AsyncGenerator[AsyncSession, None]:
 
             @event.listens_for(session.sync_session, "do_orm_execute")
             def _filter_by_tenant(execute_state):
+                # execution_options(skip_tenant_filter=True) es el
+                # escape hatch explícito para las pocas queries que
+                # necesitan mirar más allá del propio tenant aun en una
+                # sesión tenant-scoped -- hoy solo el chequeo de email
+                # único global en create_invitation (ver
+                # identity/services.py). Usar con cuidado: cualquier
+                # query marcada así deja de estar protegida por el
+                # filtro automático.
+                if execute_state.execution_options.get("skip_tenant_filter"):
+                    return
                 if execute_state.is_select or execute_state.is_update or execute_state.is_delete:
                     execute_state.statement = execute_state.statement.options(
                         with_loader_criteria(

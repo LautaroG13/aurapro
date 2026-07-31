@@ -14,6 +14,7 @@ from app.modules.quotes.services import (
     ProductNotFoundError,
     ProductVariantNotFoundError,
     QuoteNotFoundError,
+    QuoteNotPendingError,
     VariantProductMismatchError,
     create_quote,
     get_quote,
@@ -80,6 +81,8 @@ async def update_quote_status_endpoint(
         quote = await update_quote_status(db, quote_id, payload.status)
     except QuoteNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except QuoteNotPendingError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return QuoteRead.model_validate(quote)
 
 

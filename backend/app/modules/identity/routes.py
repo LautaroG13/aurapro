@@ -216,11 +216,11 @@ async def list_users(
 async def update_user_endpoint(
     user_id: UUID,
     payload: UserUpdate,
-    _current_user: CurrentUser = Depends(require_role(UserRole.ADMIN.value)),
+    current_user: CurrentUser = Depends(require_role(UserRole.ADMIN.value)),
     db: AsyncSession = Depends(get_tenant_db),
 ) -> UserRead:
     try:
-        user = await update_user(db, user_id, payload)
+        user = await update_user(db, current_user.tenant_id, user_id, payload)
     except UserNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except CannotDemoteLastAdminError as exc:
@@ -235,7 +235,7 @@ async def delete_user_endpoint(
     db: AsyncSession = Depends(get_tenant_db),
 ) -> None:
     try:
-        await delete_user(db, user_id, current_user.user_id)
+        await delete_user(db, current_user.tenant_id, user_id, current_user.user_id)
     except UserNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except CannotDeleteSelfError as exc:
