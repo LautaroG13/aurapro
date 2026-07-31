@@ -3,7 +3,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci
 
 COPY . .
 
@@ -16,6 +16,9 @@ ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 RUN npm run build
+
+RUN chown -R node:node /app
+USER node
 
 # Forma shell a propósito, mismo motivo que backend/Dockerfile: $PORT
 # lo asigna Render en runtime, no se puede fijar. `--` reenvía -p al

@@ -71,6 +71,7 @@ services:
     rootDir: frontend
     dockerfilePath: Dockerfile
     plan: free
+    healthCheckPath: /api/health
     envVars:
       # *** Leer esto antes de asumir que anda ***: NEXT_PUBLIC_API_URL
       # se hornea en el bundle del cliente durante `npm run build`

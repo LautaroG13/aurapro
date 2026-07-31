@@ -53,7 +53,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: aurapro
-      POSTGRES_PASSWORD: aurapro
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aurapro}
       POSTGRES_DB: aurapro
     ports:
       # Puerto host remapeado a 55432: el 5432 estándar suele estar
@@ -61,7 +61,10 @@ services:
       # en Mac). Dentro de la red de Docker el puerto sigue siendo 5432
       # (ver DATABASE_URL en docker-compose.yml -> hostname `postgres`);
       # esto solo cambia cómo se accede desde el host.
-      - "55432:5432"
+      # Bindeado a localhost: sin esto, Docker publica en 0.0.0.0 por
+      # default y Postgres queda alcanzable desde cualquiera en la
+      # misma red local, no solo desde esta máquina.
+      - "127.0.0.1:55432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Se monta el directorio completo, no el archivo suelto: un bind
@@ -83,7 +86,8 @@ services:
     container_name: aurapro-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      # Bindeado a localhost por el mismo motivo que postgres arriba.
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes

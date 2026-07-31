@@ -7,6 +7,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN useradd --create-home --shell /bin/bash appuser && chown -R appuser:appuser /app
+USER appuser
+
 # Forma shell (no exec/array) a propósito: ${PORT:-8000} necesita que
 # el shell la expanda. Render asigna el puerto dinámicamente vía $PORT
 # -- un valor fijo rompe el deploy. Localmente (docker-compose, sin
