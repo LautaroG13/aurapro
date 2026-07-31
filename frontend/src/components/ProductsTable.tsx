@@ -47,6 +47,7 @@ export function ProductsTable({ onEdit }: ProductsTableProps) {
               <DataTable.HeaderCell>Nombre</DataTable.HeaderCell>
               <DataTable.HeaderCell>SKU</DataTable.HeaderCell>
               <DataTable.HeaderCell align="right">Precio</DataTable.HeaderCell>
+              <DataTable.HeaderCell align="right">P. mayorista</DataTable.HeaderCell>
               <DataTable.HeaderCell align="right">Stock</DataTable.HeaderCell>
               <DataTable.HeaderCell>Estado</DataTable.HeaderCell>
               <DataTable.HeaderCell></DataTable.HeaderCell>
@@ -62,6 +63,9 @@ export function ProductsTable({ onEdit }: ProductsTableProps) {
                   {product.sku ?? "—"}
                 </DataTable.Cell>
                 <DataTable.Cell numeric>${product.price.toFixed(2)}</DataTable.Cell>
+                <DataTable.Cell numeric className="text-text-dim">
+                  {product.wholesale_price != null ? `$${product.wholesale_price.toFixed(2)}` : "—"}
+                </DataTable.Cell>
                 <DataTable.Cell numeric>{product.current_stock}</DataTable.Cell>
                 <DataTable.Cell>
                   <span className="flex items-center gap-1.5">
@@ -92,7 +96,7 @@ export function ProductsTable({ onEdit }: ProductsTableProps) {
             ))}
             {productsQuery.data?.length === 0 && (
               <DataTable.Row>
-                <DataTable.Cell className="text-center text-text-faint" colSpan={6}>
+                <DataTable.Cell className="text-center text-text-faint" colSpan={7}>
                   Sin productos todavía.
                 </DataTable.Cell>
               </DataTable.Row>

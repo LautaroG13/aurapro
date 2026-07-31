@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Enum, ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import Boolean, Enum, ForeignKey, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,6 +15,10 @@ class CustomerType(Base, TenantModel):
     __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_customer_types_tenant_id_name"),)
 
     name: Mapped[str] = mapped_column(String, nullable=False)
+    # Marca qué tipo(s) de cliente acceden a Product.wholesale_price en
+    # create_sale -- no se hardcodea el nombre "Mayorista" (el tenant
+    # puede llamarlo como quiera, o tener más de uno).
+    is_wholesale: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
 
 class Customer(Base, TenantModel):

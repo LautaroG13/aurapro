@@ -83,10 +83,20 @@ def _discount_stock(entity, stock_attr: str, quantity: int, label: str) -> None:
 
 async def create_sale(db: AsyncSession, tenant_id: UUID, payload: SaleCreate) -> Sale:
     customer = (
-        await db.execute(select(Customer).where(Customer.id == payload.customer_id))
+        await db.execute(
+            select(Customer)
+            .options(selectinload(Customer.customer_type))
+            .where(Customer.id == payload.customer_id)
+        )
     ).scalar_one_or_none()
     if customer is None:
         raise CustomerNotFoundError(f"Cliente {payload.customer_id} no encontrado")
+
+    # Precio mayorista: el tipo de cliente decide SI corresponde (no el
+    # nombre "Mayorista" hardcodeado, ver CustomerType.is_wholesale),
+    # cada producto decide si TIENE uno -- sin wholesale_price cargado,
+    # un cliente mayorista paga el price de lista igual.
+    is_wholesale_customer = customer.customer_type is not None and customer.customer_type.is_wholesale
 
     sale_items: list[SaleItem] = []
     product_details_for_event: list[dict] = []
@@ -119,7 +129,10 @@ async def create_sale(db: AsyncSession, tenant_id: UUID, payload: SaleCreate) ->
             # toca stock).
             _discount_stock(product, "current_stock", item.quantity, product.name)
 
-        unit_price = float(product.price)
+        if is_wholesale_customer and product.wholesale_price is not None:
+            unit_price = float(product.wholesale_price)
+        else:
+            unit_price = float(product.price)
         sale_items.append(
             SaleItem(
                 tenant_id=tenant_id,

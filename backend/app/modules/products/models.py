@@ -25,6 +25,7 @@ class Product(Base, TenantModel):
     __table_args__ = (
         CheckConstraint("price > 0", name="ck_products_price_positive"),
         CheckConstraint("cost > 0", name="ck_products_cost_positive"),
+        CheckConstraint("wholesale_price > 0", name="ck_products_wholesale_price_positive"),
         CheckConstraint("current_stock >= 0", name="ck_products_current_stock_non_negative"),
         # NULL no choca consigo mismo en Postgres -- productos sin sku
         # (todos los existentes, hoy) no violan este constraint entre sí.
@@ -39,6 +40,11 @@ class Product(Base, TenantModel):
     # frontend como price - cost, así no hay que mantenerlo
     # sincronizado en la base.
     cost: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # Nullable: no todos los productos tienen precio mayorista. Se usa
+    # en create_sale solo cuando el cliente de la venta tiene un
+    # CustomerType con is_wholesale=True -- si no hay wholesale_price
+    # cargado, esa venta cae al price de lista igual.
+    wholesale_price: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
     current_stock: Mapped[int] = mapped_column(nullable=False, default=0)
     # SET NULL: una categoría es una etiqueta de categorización liviana
     # (mismo criterio que Customer.customer_type_id) -- borrar una

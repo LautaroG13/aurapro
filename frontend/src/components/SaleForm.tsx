@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { listCustomers } from "@/lib/api/customers";
+import { listCustomers, listCustomerTypes } from "@/lib/api/customers";
 import { listProducts } from "@/lib/api/products";
 import { createSale, downloadSaleReceipt } from "@/lib/api/sales";
 import type { ProductRead, ProductVariantRead } from "@/lib/api/types";
@@ -28,6 +28,8 @@ export function SaleForm() {
 
   const customersQuery = useQuery({ queryKey: ["customers"], queryFn: listCustomers });
   const productsQuery = useQuery({ queryKey: ["products"], queryFn: listProducts });
+  // Comparte queryKey con CustomerForm -- React Query dedupea.
+  const customerTypesQuery = useQuery({ queryKey: ["customerTypes"], queryFn: listCustomerTypes });
 
   const [customerId, setCustomerId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS[0]);
@@ -47,14 +49,28 @@ export function SaleForm() {
     return products.filter((p) => p.name.toLowerCase().includes(query));
   }, [productsQuery.data, productSearch]);
 
+  // El backend decide el precio final igual (ver create_sale) -- esto
+  // es solo para que el vendedor vea de entrada qué precio le va a
+  // tocar al armar el carrito, antes de confirmar.
+  const isWholesaleCustomer = useMemo(() => {
+    const customer = customersQuery.data?.find((c) => c.id === customerId);
+    if (!customer?.customer_type_id) return false;
+    const customerType = customerTypesQuery.data?.find((t) => t.id === customer.customer_type_id);
+    return customerType?.is_wholesale ?? false;
+  }, [customerId, customersQuery.data, customerTypesQuery.data]);
+
+  function effectivePrice(product: ProductRead): number {
+    return isWholesaleCustomer && product.wholesale_price != null ? product.wholesale_price : product.price;
+  }
+
   // Total client-side: solo para mostrarle algo al vendedor mientras
-  // arma el carrito. El total real lo calcula el backend a partir de
-  // Product.price en el momento del POST -- este número es una
-  // estimación, no la fuente de verdad (ver SaleCreate: no lleva
+  // arma el carrito. El total real lo calcula el backend a partir del
+  // precio que corresponda en el momento del POST -- este número es
+  // una estimación, no la fuente de verdad (ver SaleCreate: no lleva
   // unit_price ni total_amount).
   const estimatedTotal = useMemo(
-    () => cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0),
-    [cart],
+    () => cart.reduce((sum, line) => sum + effectivePrice(line.product) * line.quantity, 0),
+    [cart, isWholesaleCustomer],
   );
 
   function addToCart(product: ProductRead, variant: ProductVariantRead | null) {
@@ -197,7 +213,8 @@ export function SaleForm() {
                 className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 text-sm"
               >
                 <span>
-                  {product.name} — ${product.price.toFixed(2)}
+                  {product.name} — ${effectivePrice(product).toFixed(2)}
+                  {isWholesaleCustomer && product.wholesale_price != null && " (mayorista)"}
                   {!hasVariants && ` (stock: ${product.current_stock})`}
                 </span>
                 <span className="flex items-center gap-2">
@@ -261,8 +278,8 @@ export function SaleForm() {
                     }
                     className="aura-input w-16 px-2 py-1"
                   />
-                  x ${line.product.price.toFixed(2)} = $
-                  {(line.product.price * line.quantity).toFixed(2)}
+                  x ${effectivePrice(line.product).toFixed(2)} = $
+                  {(effectivePrice(line.product) * line.quantity).toFixed(2)}
                 </span>
                 <button
                   type="button"

@@ -89,6 +89,7 @@ export interface ProductRead {
   description: string | null;
   price: number;
   cost: number | null;
+  wholesale_price: number | null;
   current_stock: number;
   category_id: string | null;
   sku: string | null;
@@ -159,6 +160,7 @@ export interface ProductCreate {
   description?: string | null;
   price: number;
   cost?: number | null;
+  wholesale_price?: number | null;
   current_stock?: number;
   category_id?: string | null;
   sku?: string | null;
@@ -176,6 +178,7 @@ export interface ProductUpdate {
   description?: string | null;
   price?: number;
   cost?: number | null;
+  wholesale_price?: number | null;
   current_stock?: number;
   category_id?: string | null;
   sku?: string | null;
@@ -191,6 +194,7 @@ export interface CustomerTypeRead {
   id: string;
   tenant_id: string;
   name: string;
+  is_wholesale: boolean;
   created_at: string;
 }
 
@@ -199,6 +203,7 @@ export interface CustomerTypeRead {
  */
 export interface CustomerTypeCreate {
   name: string;
+  is_wholesale?: boolean;
 }
 
 /**

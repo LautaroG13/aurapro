@@ -35,6 +35,7 @@ export function CustomerForm({ editingCustomer, onDone }: CustomerFormProps) {
 
   const [isCreatingType, setIsCreatingType] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
+  const [newTypeIsWholesale, setNewTypeIsWholesale] = useState(false);
 
   const salespeopleQuery = useQuery({ queryKey: ["salespeople"], queryFn: listSalespeople });
   const customerTypesQuery = useQuery({ queryKey: ["customerTypes"], queryFn: listCustomerTypes });
@@ -61,11 +62,12 @@ export function CustomerForm({ editingCustomer, onDone }: CustomerFormProps) {
   });
 
   const createTypeMutation = useMutation({
-    mutationFn: () => createCustomerType({ name: newTypeName }),
+    mutationFn: () => createCustomerType({ name: newTypeName, is_wholesale: newTypeIsWholesale }),
     onSuccess: (createdType) => {
       queryClient.invalidateQueries({ queryKey: ["customerTypes"] });
       setCustomerTypeId(createdType.id);
       setNewTypeName("");
+      setNewTypeIsWholesale(false);
       setIsCreatingType(false);
     },
   });
@@ -151,38 +153,50 @@ export function CustomerForm({ editingCustomer, onDone }: CustomerFormProps) {
             {customerTypesQuery.data?.map((customerType) => (
               <option key={customerType.id} value={customerType.id}>
                 {customerType.name}
+                {customerType.is_wholesale ? " (mayorista)" : ""}
               </option>
             ))}
           </Select>
         </label>
 
         {isCreatingType ? (
-          <div className="flex gap-2">
-            <Input
-              value={newTypeName}
-              onChange={(e) => setNewTypeName(e.target.value)}
-              placeholder="Nombre del tipo (ej. Mayorista)"
-            />
-            <Button
-              type="button"
-              variant="primary"
-              className="px-3 py-1"
-              disabled={createTypeMutation.isPending || newTypeName.trim() === ""}
-              onClick={() => createTypeMutation.mutate()}
-            >
-              {createTypeMutation.isPending ? "Creando..." : "Crear"}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="px-3 py-1"
-              onClick={() => {
-                setIsCreatingType(false);
-                setNewTypeName("");
-              }}
-            >
-              Cancelar
-            </Button>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <Input
+                value={newTypeName}
+                onChange={(e) => setNewTypeName(e.target.value)}
+                placeholder="Nombre del tipo (ej. Mayorista)"
+              />
+              <Button
+                type="button"
+                variant="primary"
+                className="px-3 py-1"
+                disabled={createTypeMutation.isPending || newTypeName.trim() === ""}
+                onClick={() => createTypeMutation.mutate()}
+              >
+                {createTypeMutation.isPending ? "Creando..." : "Crear"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="px-3 py-1"
+                onClick={() => {
+                  setIsCreatingType(false);
+                  setNewTypeName("");
+                  setNewTypeIsWholesale(false);
+                }}
+              >
+                Cancelar
+              </Button>
+            </div>
+            <label className="flex items-center gap-2 font-body text-[13px] font-medium text-text">
+              <input
+                type="checkbox"
+                checked={newTypeIsWholesale}
+                onChange={(e) => setNewTypeIsWholesale(e.target.checked)}
+              />
+              Es mayorista (los clientes de este tipo pagan el precio mayorista de los productos que lo tengan)
+            </label>
           </div>
         ) : (
           <Button

@@ -10,6 +10,7 @@ class CustomerTypeCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1)
+    is_wholesale: bool = False
 
 
 class CustomerTypeRead(BaseModel):
@@ -18,6 +19,7 @@ class CustomerTypeRead(BaseModel):
     id: UUID
     tenant_id: UUID
     name: str
+    is_wholesale: bool
     created_at: datetime
 
 

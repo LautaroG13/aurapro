@@ -96,6 +96,7 @@ class ProductCreate(BaseModel):
     description: str | None = None
     price: float = Field(gt=0)
     cost: float | None = Field(default=None, gt=0)
+    wholesale_price: float | None = Field(default=None, gt=0)
     current_stock: int = Field(ge=0, default=0)
     category_id: UUID | None = None
     sku: str | None = None
@@ -114,6 +115,7 @@ class ProductUpdate(BaseModel):
     description: str | None = None
     price: float | None = Field(default=None, gt=0)
     cost: float | None = Field(default=None, gt=0)
+    wholesale_price: float | None = Field(default=None, gt=0)
     current_stock: int | None = Field(default=None, ge=0)
     category_id: UUID | None = None
     sku: str | None = None
@@ -131,6 +133,7 @@ class ProductRead(BaseModel):
     description: str | None
     price: float
     cost: float | None
+    wholesale_price: float | None
     current_stock: int
     category_id: UUID | None
     sku: str | None

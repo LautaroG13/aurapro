@@ -20,6 +20,9 @@ export function ProductForm({ editingProduct, onDone }: ProductFormProps) {
   const [description, setDescription] = useState(editingProduct?.description ?? "");
   const [price, setPrice] = useState(editingProduct ? String(editingProduct.price) : "");
   const [cost, setCost] = useState(editingProduct?.cost != null ? String(editingProduct.cost) : "");
+  const [wholesalePrice, setWholesalePrice] = useState(
+    editingProduct?.wholesale_price != null ? String(editingProduct.wholesale_price) : ""
+  );
   const [currentStock, setCurrentStock] = useState(
     editingProduct ? String(editingProduct.current_stock) : "0"
   );
@@ -41,6 +44,7 @@ export function ProductForm({ editingProduct, onDone }: ProductFormProps) {
         description: description || null,
         price: Number(price),
         cost: cost ? Number(cost) : null,
+        wholesale_price: wholesalePrice ? Number(wholesalePrice) : null,
         current_stock: Number(currentStock),
         category_id: categoryId || null,
         sku: sku || null,
@@ -110,6 +114,19 @@ export function ProductForm({ editingProduct, onDone }: ProductFormProps) {
           step="0.01"
           value={cost}
           onChange={(e) => setCost(e.target.value)}
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
+        Precio mayorista (opcional)
+        <Input
+          className="font-mono"
+          type="number"
+          min="0.01"
+          step="0.01"
+          value={wholesalePrice}
+          onChange={(e) => setWholesalePrice(e.target.value)}
+          placeholder="Se usa con clientes de tipo mayorista"
         />
       </label>
 
