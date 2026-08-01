@@ -57,6 +57,10 @@ class ProductNotFoundError(Exception):
     pass
 
 
+class ProductNotActiveError(Exception):
+    pass
+
+
 class ProductVariantNotFoundError(Exception):
     pass
 
@@ -130,6 +134,12 @@ async def create_sale(db: AsyncSession, tenant_id: UUID, payload: SaleCreate) ->
         product = await _lock_for_update(db, Product, item.product_id)
         if product is None:
             raise ProductNotFoundError(f"Producto {item.product_id} no encontrado")
+        if not product.is_active:
+            # El frontend ya oculta productos dados de baja del picker,
+            # pero eso es solo cosmético -- sin este chequeo, un POST
+            # directo a la API (o un carrito armado antes de que el
+            # producto se desactivara) igual concreta la venta.
+            raise ProductNotActiveError(f"'{product.name}' está dado de baja y no se puede vender")
 
         if item.variant_id is not None:
             variant = await _lock_for_update(db, ProductVariant, item.variant_id)

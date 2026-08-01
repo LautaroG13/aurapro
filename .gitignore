@@ -34,4 +34,7 @@ infra/docker/**/data/
 
 # Logs
 *.log
-.agents/ 
+.agents/
+
+# Referencias de diseño (mockups pesados, no van al repo)
+design-references/

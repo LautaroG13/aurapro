@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { AuthGate } from "@/components/AuthGate";
 import { decodeToken, getStoredToken } from "@/lib/auth";
+import { CurrentUserProvider } from "@/lib/currentUserContext";
 
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
@@ -45,21 +46,27 @@ export function AppLayout({ children }: { children: ReactNode }) {
 }
 
 function AuthenticatedShell({ children }: { children: ReactNode }) {
-  const { isSuperadmin, isAdmin } = useMemo(() => {
+  const { role, isSuperadmin, isAdmin } = useMemo(() => {
     const token = getStoredToken();
     const payload = token ? decodeToken(token) : null;
-    return { isSuperadmin: Boolean(payload?.is_superadmin), isAdmin: payload?.role === "ADMIN" };
+    return {
+      role: payload?.role ?? null,
+      isSuperadmin: Boolean(payload?.is_superadmin),
+      isAdmin: payload?.role === "ADMIN",
+    };
   }, []);
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar isSuperadmin={isSuperadmin} isAdmin={isAdmin} />
-      <div className="flex flex-1 flex-col">
-        <Topbar />
-        <main className="flex-1 overflow-y-auto bg-bg p-8">
-          <div className="mx-auto flex max-w-4xl flex-col gap-6">{children}</div>
-        </main>
+    <CurrentUserProvider value={{ role, isAdmin, isSuperadmin }}>
+      <div className="flex min-h-screen">
+        <Sidebar isSuperadmin={isSuperadmin} isAdmin={isAdmin} />
+        <div className="flex flex-1 flex-col">
+          <Topbar />
+          <main className="flex-1 overflow-y-auto bg-bg p-8">
+            <div className="mx-auto flex max-w-4xl flex-col gap-6">{children}</div>
+          </main>
+        </div>
       </div>
-    </div>
+    </CurrentUserProvider>
   );
 }

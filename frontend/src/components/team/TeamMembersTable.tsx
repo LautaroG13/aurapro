@@ -20,6 +20,12 @@ function EditUserRow({ user, onDone }: EditUserRowProps) {
   const [lastName, setLastName] = useState(user.last_name ?? "");
   const [role, setRole] = useState<UserRead["role"]>(user.role);
   const [newPassword, setNewPassword] = useState("");
+  // minLength={8} en el input es solo un hint de HTML -- esta fila
+  // vive en un <tr><td>, no un <form> real, así que la constraint
+  // validation del navegador nunca corre. Se valida acá: vacío está
+  // bien (no cambiar la contraseña), pero si se tipeó algo tiene que
+  // cumplir el mínimo que exige el backend.
+  const isPasswordValid = newPassword === "" || newPassword.length >= 8;
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -77,7 +83,7 @@ function EditUserRow({ user, onDone }: EditUserRowProps) {
           </label>
           <button
             type="button"
-            disabled={saveMutation.isPending}
+            disabled={saveMutation.isPending || !isPasswordValid}
             onClick={() => saveMutation.mutate()}
             className="aura-btn-primary px-3 py-1"
           >
@@ -87,6 +93,9 @@ function EditUserRow({ user, onDone }: EditUserRowProps) {
             Cancelar
           </button>
         </div>
+        {!isPasswordValid && (
+          <p className="text-xs text-danger">La contraseña nueva tiene que tener al menos 8 caracteres.</p>
+        )}
         {saveMutation.isError && (
           <p role="alert" className="aura-alert">
             {(saveMutation.error as Error).message}

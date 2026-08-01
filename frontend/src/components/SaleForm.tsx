@@ -8,6 +8,7 @@ import { listOrderNotes } from "@/lib/api/orderNotes";
 import { listProducts } from "@/lib/api/products";
 import { createSale, downloadSaleReceipt } from "@/lib/api/sales";
 import type { ProductRead, ProductVariantRead } from "@/lib/api/types";
+import { useCanWrite } from "@/lib/currentUserContext";
 import { PAYMENT_METHODS, isCardPayment, paymentMethodLabel } from "@/lib/paymentMethods";
 
 interface CartLine {
@@ -200,7 +201,8 @@ export function SaleForm() {
     },
   });
 
-  const canSubmit = customerId !== "" && cart.length > 0 && !saleMutation.isPending;
+  const canWrite = useCanWrite();
+  const canSubmit = canWrite && customerId !== "" && cart.length > 0 && !saleMutation.isPending;
 
   return (
     <div className="aura-card flex flex-col gap-5">

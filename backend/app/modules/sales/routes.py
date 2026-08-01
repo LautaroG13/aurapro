@@ -18,6 +18,7 @@ from app.modules.sales.services import (
     CustomerNotFoundError,
     InsufficientCreditError,
     InsufficientStockError,
+    ProductNotActiveError,
     ProductNotFoundError,
     ProductVariantNotFoundError,
     SaleNotFoundError,
@@ -44,6 +45,8 @@ async def create_sale_endpoint(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ProductNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProductNotActiveError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ProductVariantNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except VariantProductMismatchError as exc:

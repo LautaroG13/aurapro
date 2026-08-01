@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, DataTable, StatusDot } from "@/components/ui";
 import { deleteProduct, listProducts } from "@/lib/api/products";
 import type { ProductRead } from "@/lib/api/types";
+import { useCanWrite } from "@/lib/currentUserContext";
 
 interface ProductsTableProps {
   onEdit: (product: ProductRead) => void;
@@ -12,6 +13,7 @@ interface ProductsTableProps {
 
 export function ProductsTable({ onEdit }: ProductsTableProps) {
   const queryClient = useQueryClient();
+  const canWrite = useCanWrite();
   const productsQuery = useQuery({ queryKey: ["products"], queryFn: listProducts });
 
   const deleteMutation = useMutation({
@@ -74,23 +76,25 @@ export function ProductsTable({ onEdit }: ProductsTableProps) {
                   </span>
                 </DataTable.Cell>
                 <DataTable.Cell>
-                  <div className="flex gap-2">
-                    <Button variant="secondary" className="px-2.5 py-1" onClick={() => onEdit(product)}>
-                      Editar
-                    </Button>
-                    <Button
-                      variant="danger"
-                      className="px-2.5 py-1"
-                      disabled={deleteMutation.isPending}
-                      onClick={() => {
-                        if (window.confirm(`¿Borrar "${product.name}"?`)) {
-                          deleteMutation.mutate(product.id);
-                        }
-                      }}
-                    >
-                      Borrar
-                    </Button>
-                  </div>
+                  {canWrite && (
+                    <div className="flex gap-2">
+                      <Button variant="secondary" className="px-2.5 py-1" onClick={() => onEdit(product)}>
+                        Editar
+                      </Button>
+                      <Button
+                        variant="danger"
+                        className="px-2.5 py-1"
+                        disabled={deleteMutation.isPending}
+                        onClick={() => {
+                          if (window.confirm(`¿Borrar "${product.name}"?`)) {
+                            deleteMutation.mutate(product.id);
+                          }
+                        }}
+                      >
+                        Borrar
+                      </Button>
+                    </div>
+                  )}
                 </DataTable.Cell>
               </DataTable.Row>
             ))}

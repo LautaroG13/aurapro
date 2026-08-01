@@ -7,6 +7,7 @@ import { listCustomers, listCustomerTypes } from "@/lib/api/customers";
 import { listProducts } from "@/lib/api/products";
 import { createQuote, downloadQuoteReceipt } from "@/lib/api/quotes";
 import type { ProductRead, ProductVariantRead } from "@/lib/api/types";
+import { useCanWrite } from "@/lib/currentUserContext";
 
 interface CartLine {
   product: ProductRead;
@@ -114,7 +115,8 @@ export function QuoteForm() {
     },
   });
 
-  const canSubmit = customerId !== "" && cart.length > 0 && !quoteMutation.isPending;
+  const canWrite = useCanWrite();
+  const canSubmit = canWrite && customerId !== "" && cart.length > 0 && !quoteMutation.isPending;
 
   return (
     <div className="aura-card flex flex-col gap-5">

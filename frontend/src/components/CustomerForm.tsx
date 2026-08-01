@@ -144,6 +144,11 @@ export function CustomerForm({ editingCustomer, onDone }: CustomerFormProps) {
           ))}
         </Select>
       </label>
+      {salespeopleQuery.isError && (
+        <p className="text-xs text-danger">
+          No se pudo cargar la lista de vendedores: {(salespeopleQuery.error as Error).message}
+        </p>
+      )}
 
       <div className="flex flex-col gap-2">
         <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
@@ -158,6 +163,11 @@ export function CustomerForm({ editingCustomer, onDone }: CustomerFormProps) {
             ))}
           </Select>
         </label>
+        {customerTypesQuery.isError && (
+          <p className="text-xs text-danger">
+            No se pudieron cargar los tipos de cliente: {(customerTypesQuery.error as Error).message}
+          </p>
+        )}
 
         {isCreatingType ? (
           <div className="flex flex-col gap-2">

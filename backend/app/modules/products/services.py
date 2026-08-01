@@ -38,6 +38,22 @@ class ProductInUseError(Exception):
     pass
 
 
+class ProductSkuConflictError(Exception):
+    """El SKU ya existe para otro producto de este tenant -- se levanta
+    al capturar el IntegrityError del UniqueConstraint."""
+
+    pass
+
+
+class ProductVariantAttributesConflictError(Exception):
+    """Dos variantes del mismo producto con la misma combinación de
+    atributos (ej. color=rojo, talle=M) -- no hay UniqueConstraint en
+    la base para esto (attributes es JSONB libre), así que se valida a
+    mano antes de insertar."""
+
+    pass
+
+
 class ProductCategoryNotFoundError(Exception):
     pass
 
@@ -98,7 +114,11 @@ async def create_product(db: AsyncSession, tenant_id: UUID, payload: ProductCrea
     await _validate_category(db, payload.category_id)
     product = Product(tenant_id=tenant_id, **payload.model_dump())
     db.add(product)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise ProductSkuConflictError(f"Ya existe un producto con el SKU '{payload.sku}'") from exc
     await db.refresh(product)
     # Recién creado no tiene variantes todavía, pero ProductRead
     # serializa `variants` -- sin cargar la relación acá, acceder a
@@ -119,14 +139,15 @@ async def list_products(db: AsyncSession, skip: int = 0, limit: int = 50) -> lis
     return list(result.scalars().all())
 
 
-async def get_product(db: AsyncSession, product_id: UUID) -> Product:
+async def get_product(db: AsyncSession, product_id: UUID, for_update: bool = False) -> Product:
     """Si product_id existe pero es de otro tenant, get_tenant_db ya lo
     excluyó de la query -- esto tira NotFound, no un 403. Es la
     respuesta correcta: no confirmarle a un tenant que el ID de otro
     tenant existe."""
-    result = await db.execute(
-        select(Product).options(selectinload(Product.variants)).where(Product.id == product_id)
-    )
+    query = select(Product).options(selectinload(Product.variants)).where(Product.id == product_id)
+    if for_update:
+        query = query.with_for_update()
+    result = await db.execute(query)
     product = result.scalar_one_or_none()
     if product is None:
         raise ProductNotFoundError(f"Producto {product_id} no encontrado")
@@ -134,13 +155,22 @@ async def get_product(db: AsyncSession, product_id: UUID) -> Product:
 
 
 async def update_product(db: AsyncSession, product_id: UUID, payload: ProductUpdate) -> Product:
-    product = await get_product(db, product_id)
+    # for_update=True: PATCH /products/{id} es también el endpoint de
+    # ajuste manual de stock (current_stock). Sin el lock, un ajuste
+    # manual concurrente con una venta (que sí lockea el producto en
+    # sales/services.py) podía pisarse -- gana el último commit() y el
+    # otro cambio se pierde en silencio, dejando el stock final mal.
+    product = await get_product(db, product_id, for_update=True)
     updates = payload.model_dump(exclude_unset=True)
     if "category_id" in updates:
         await _validate_category(db, updates["category_id"])
     for field, value in updates.items():
         setattr(product, field, value)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise ProductSkuConflictError(f"Ya existe un producto con el SKU '{updates.get('sku')}'") from exc
     await db.refresh(product)
     # commit() expira todos los atributos del objeto, incluyendo
     # `variants` (ya venía cargado por el selectinload de get_product)
@@ -264,16 +294,23 @@ async def delete_attribute_value(db: AsyncSession, attribute_id: UUID, value_id:
     await db.commit()
 
 
-async def get_variant(db: AsyncSession, product_id: UUID, variant_id: UUID) -> ProductVariant:
+def _attributes_key(attributes: dict[str, str]) -> tuple:
+    return tuple(sorted(attributes.items()))
+
+
+async def get_variant(
+    db: AsyncSession, product_id: UUID, variant_id: UUID, for_update: bool = False
+) -> ProductVariant:
     """Filtra por product_id además de variant_id: una variante de otro
     producto (aunque sea del mismo tenant) no debe resolverse acá --
     evita que una URL con product_id "equivocado" pero variant_id
     válido devuelva datos de un producto distinto."""
-    result = await db.execute(
-        select(ProductVariant).where(
-            ProductVariant.id == variant_id, ProductVariant.product_id == product_id
-        )
+    query = select(ProductVariant).where(
+        ProductVariant.id == variant_id, ProductVariant.product_id == product_id
     )
+    if for_update:
+        query = query.with_for_update()
+    result = await db.execute(query)
     variant = result.scalar_one_or_none()
     if variant is None:
         raise ProductVariantNotFoundError(f"Variante {variant_id} no encontrada")
@@ -283,10 +320,21 @@ async def get_variant(db: AsyncSession, product_id: UUID, variant_id: UUID) -> P
 async def create_variant(
     db: AsyncSession, tenant_id: UUID, product_id: UUID, payload: ProductVariantCreate
 ) -> ProductVariant:
-    await get_product(db, product_id)
+    product = await get_product(db, product_id)
+    combo = _attributes_key(payload.attributes)
+    if combo and combo in {_attributes_key(v.attributes) for v in product.variants}:
+        raise ProductVariantAttributesConflictError(
+            f"Ya existe una variante de este producto con esa combinación de atributos: {dict(combo)}"
+        )
     variant = ProductVariant(tenant_id=tenant_id, product_id=product_id, **payload.model_dump())
     db.add(variant)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise ProductVariantSkuConflictError(
+            f"Ya existe una variante con el SKU '{payload.sku}' para este producto"
+        ) from exc
     await db.refresh(variant)
     return variant
 
@@ -296,15 +344,28 @@ async def create_variants_bulk(
 ) -> list[ProductVariant]:
     """Crea todas las variantes del lote en una sola transacción: si
     alguna falla (SKU duplicado, etc.), ninguna se crea."""
-    await get_product(db, product_id)
+    product = await get_product(db, product_id)
 
     seen_skus: set[str] = set()
+    # Combinaciones de atributos ya existentes en el producto (no hay
+    # UniqueConstraint para esto en la base -- attributes es JSONB
+    # libre -- así que se valida acá antes de insertar, contra lo ya
+    # existente Y contra el resto del lote.
+    seen_combos: set[tuple] = {_attributes_key(v.attributes) for v in product.variants}
     for item in payload.variants:
         sku = (item.sku or "").strip()
         if sku and sku in seen_skus:
             raise ProductVariantDuplicateError(f"El SKU '{sku}' está repetido en el lote")
         if sku:
             seen_skus.add(sku)
+
+        combo = _attributes_key(item.attributes)
+        if combo and combo in seen_combos:
+            raise ProductVariantAttributesConflictError(
+                f"La combinación de atributos {dict(combo)} está repetida (o ya existe para este producto)"
+            )
+        if combo:
+            seen_combos.add(combo)
 
     variants = [
         ProductVariant(tenant_id=tenant_id, product_id=product_id, **item.model_dump())
@@ -326,10 +387,29 @@ async def create_variants_bulk(
 async def update_variant(
     db: AsyncSession, product_id: UUID, variant_id: UUID, payload: ProductVariantUpdate
 ) -> ProductVariant:
-    variant = await get_variant(db, product_id, variant_id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    # for_update=True: mismo motivo que update_product -- este endpoint
+    # también es el de ajuste manual de stock por variante.
+    variant = await get_variant(db, product_id, variant_id, for_update=True)
+    updates = payload.model_dump(exclude_unset=True)
+    if "attributes" in updates:
+        product = await get_product(db, product_id)
+        combo = _attributes_key(updates["attributes"])
+        other_combos = {
+            _attributes_key(v.attributes) for v in product.variants if v.id != variant_id
+        }
+        if combo and combo in other_combos:
+            raise ProductVariantAttributesConflictError(
+                f"Ya existe otra variante de este producto con esa combinación de atributos: {dict(combo)}"
+            )
+    for field, value in updates.items():
         setattr(variant, field, value)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise ProductVariantSkuConflictError(
+            f"Ya existe una variante con el SKU '{updates.get('sku')}' para este producto"
+        ) from exc
     await db.refresh(variant)
     return variant
 

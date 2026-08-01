@@ -38,11 +38,12 @@ from collections.abc import AsyncGenerator
 from uuid import UUID
 
 from fastapi import HTTPException, Request
-from sqlalchemy import event
+from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import with_loader_criteria
 
 from app.db.async_session import AsyncSessionLocal
+from app.modules.identity.models import Tenant
 from app.shared.tenant_model import TenantModel
 
 
@@ -55,6 +56,18 @@ async def get_tenant_db(request: Request) -> AsyncGenerator[AsyncSession, None]:
 
     async with AsyncSessionLocal() as session:
         if not is_superadmin:
+            # Sin este chequeo, suspender un tenant (admin/services.py::
+            # set_tenant_active) solo bloqueaba logins NUEVOS --
+            # cualquier JWT ya emitido seguía operando con normalidad
+            # hasta expirar (hasta access_token_expire_minutes después).
+            # authenticate_user ya valida esto en el login; acá se repite
+            # por request para que la suspensión corte el acceso de
+            # inmediato, no cuando el token venza solo.
+            is_active = (
+                await session.execute(select(Tenant.is_active).where(Tenant.id == tenant_id))
+            ).scalar_one_or_none()
+            if not is_active:
+                raise HTTPException(status_code=403, detail="Esta organización está suspendida")
 
             @event.listens_for(session.sync_session, "do_orm_execute")
             def _filter_by_tenant(execute_state):

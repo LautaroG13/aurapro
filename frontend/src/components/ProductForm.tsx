@@ -155,6 +155,11 @@ export function ProductForm({ editingProduct, onDone }: ProductFormProps) {
             ))}
           </Select>
         </label>
+        {categoriesQuery.isError && (
+          <p className="text-xs text-danger">
+            No se pudieron cargar las categorías: {(categoriesQuery.error as Error).message}
+          </p>
+        )}
 
         {isCreatingCategory ? (
           <div className="flex gap-2">

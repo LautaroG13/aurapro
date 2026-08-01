@@ -6,13 +6,12 @@ import { getStockAlert } from "@/lib/api/analytics";
 
 interface StockAlertProps {
   productId: string;
-  tenantId: string;
 }
 
-export function StockAlert({ productId, tenantId }: StockAlertProps) {
+export function StockAlert({ productId }: StockAlertProps) {
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["stock-alert", tenantId, productId],
-    queryFn: () => getStockAlert(productId, tenantId),
+    queryKey: ["stock-alert", productId],
+    queryFn: () => getStockAlert(productId),
     refetchInterval: 60_000,
   });
 

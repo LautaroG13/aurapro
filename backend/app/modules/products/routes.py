@@ -31,6 +31,8 @@ from app.modules.products.services import (
     ProductCategoryNotFoundError,
     ProductInUseError,
     ProductNotFoundError,
+    ProductSkuConflictError,
+    ProductVariantAttributesConflictError,
     ProductVariantDuplicateError,
     ProductVariantNotFoundError,
     ProductVariantSkuConflictError,
@@ -168,6 +170,8 @@ async def create_product_endpoint(
         product = await create_product(db, current_user.tenant_id, payload)
     except InvalidCategoryError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ProductSkuConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return ProductRead.model_validate(product)
 
 
@@ -208,6 +212,8 @@ async def update_product_endpoint(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InvalidCategoryError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ProductSkuConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return ProductRead.model_validate(product)
 
 
@@ -236,6 +242,10 @@ async def create_variant_endpoint(
         variant = await create_variant(db, current_user.tenant_id, product_id, payload)
     except ProductNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProductVariantAttributesConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ProductVariantSkuConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return ProductVariantRead.model_validate(variant)
 
 
@@ -251,6 +261,8 @@ async def create_variants_bulk_endpoint(
     except ProductNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ProductVariantDuplicateError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ProductVariantAttributesConflictError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ProductVariantSkuConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -269,6 +281,10 @@ async def update_variant_endpoint(
         variant = await update_variant(db, product_id, variant_id, payload)
     except ProductVariantNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProductVariantAttributesConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ProductVariantSkuConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return ProductVariantRead.model_validate(variant)
 
 

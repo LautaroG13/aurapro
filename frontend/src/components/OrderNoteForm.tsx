@@ -7,6 +7,7 @@ import { listCustomers, listCustomerTypes } from "@/lib/api/customers";
 import { createOrderNote, downloadOrderNoteReceipt } from "@/lib/api/orderNotes";
 import { listProducts } from "@/lib/api/products";
 import type { ProductRead, ProductVariantRead } from "@/lib/api/types";
+import { useCanWrite } from "@/lib/currentUserContext";
 
 interface CartLine {
   product: ProductRead;
@@ -108,7 +109,8 @@ export function OrderNoteForm() {
     },
   });
 
-  const canSubmit = customerId !== "" && cart.length > 0 && !orderNoteMutation.isPending;
+  const canWrite = useCanWrite();
+  const canSubmit = canWrite && customerId !== "" && cart.length > 0 && !orderNoteMutation.isPending;
 
   return (
     <div className="aura-card flex flex-col gap-5">

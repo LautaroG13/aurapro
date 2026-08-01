@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button, DataTable, Input, Select } from "@/components/ui";
 import { createCustomerPayment, getCustomerAccount } from "@/lib/api/treasury";
 import type { CustomerRead } from "@/lib/api/types";
+import { useCanWrite } from "@/lib/currentUserContext";
 import { paymentMethodLabel } from "@/lib/paymentMethods";
 
 const PAYMENT_METHODS = ["cash", "card_debit", "card_credit", "transfer"] as const;
@@ -16,6 +17,7 @@ interface CustomerAccountProps {
 
 export function CustomerAccount({ customer }: CustomerAccountProps) {
   const queryClient = useQueryClient();
+  const canWrite = useCanWrite();
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS[0]);
   const [description, setDescription] = useState("");
@@ -42,6 +44,13 @@ export function CustomerAccount({ customer }: CustomerAccountProps) {
       setDescription("");
     },
   });
+
+  // El input vive fuera de un <form> real (ver el comentario más abajo),
+  // así que el min="0.01" del <input type="number"> es solo un hint de
+  // HTML -- no bloquea nada por sí solo. Se valida acá antes de habilitar
+  // el botón.
+  const parsedAmount = Number(amount);
+  const isAmountValid = amount !== "" && Number.isFinite(parsedAmount) && parsedAmount > 0;
 
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-4">
@@ -104,42 +113,44 @@ export function CustomerAccount({ customer }: CustomerAccountProps) {
           CustomerForm -- un <form> anidado es HTML inválido y puede
           disparar el submit equivocado. Mismo patrón que
           ProductVariants (botones type="button" + onClick). */}
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
-          Registrar cobro
-          <Input
-            className="w-32 font-mono"
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
-          Medio
-          <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-            {PAYMENT_METHODS.map((method) => (
-              <option key={method} value={method}>
-                {paymentMethodLabel(method)}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
-          Descripción (opcional)
-          <Input value={description} onChange={(e) => setDescription(e.target.value)} />
-        </label>
-        <Button
-          type="button"
-          variant="primary"
-          className="px-3 py-2"
-          disabled={paymentMutation.isPending || amount === ""}
-          onClick={() => paymentMutation.mutate()}
-        >
-          {paymentMutation.isPending ? "Guardando..." : "Registrar"}
-        </Button>
-      </div>
+      {canWrite && (
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
+            Registrar cobro
+            <Input
+              className="w-32 font-mono"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
+            Medio
+            <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+              {PAYMENT_METHODS.map((method) => (
+                <option key={method} value={method}>
+                  {paymentMethodLabel(method)}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-text-dim">
+            Descripción (opcional)
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+          </label>
+          <Button
+            type="button"
+            variant="primary"
+            className="px-3 py-2"
+            disabled={paymentMutation.isPending || !isAmountValid}
+            onClick={() => paymentMutation.mutate()}
+          >
+            {paymentMutation.isPending ? "Guardando..." : "Registrar"}
+          </Button>
+        </div>
+      )}
 
       {paymentMutation.isError && (
         <p role="alert" className="rounded-base border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">

@@ -20,6 +20,7 @@ import type {
   ProductVariantCreate,
   ProductVariantRead,
 } from "@/lib/api/types";
+import { useCanWrite } from "@/lib/currentUserContext";
 
 function AttributeChip({
   label,
@@ -291,6 +292,10 @@ interface VariantAttributesEditorProps {
   initialSku: string | null;
   initialStock: number;
   isSaving: boolean;
+  // Combinaciones de atributos ya usadas por OTRAS variantes de este
+  // producto (si se está editando una, la propia queda afuera de este
+  // set -- ver dónde se arma en el padre).
+  existingCombos: Set<string>;
   onSave: (attributes: Record<string, string>, sku: string | null, stock: number) => void;
   onCancel: () => void;
 }
@@ -301,12 +306,23 @@ function VariantAttributesEditor({
   initialSku,
   initialStock,
   isSaving,
+  existingCombos,
   onSave,
   onCancel,
 }: VariantAttributesEditorProps) {
   const [rows, setRows] = useState<SingleRowState[]>(() => initialSingleRows(initialAttributes, attributes));
   const [sku, setSku] = useState(initialSku ?? "");
   const [stock, setStock] = useState(String(initialStock));
+
+  // min="0" del <input type="number"> es solo un hint de HTML -- estos
+  // botones son type="button" fuera de un <form> real, así que no hay
+  // constraint validation nativa corriendo. Se valida acá.
+  const parsedStock = Number(stock);
+  const isStockValid = stock !== "" && Number.isFinite(parsedStock) && Number.isInteger(parsedStock) && parsedStock >= 0;
+
+  const currentAttributes = rowsToAttributes(rows, attributes);
+  const currentKey = attributesKey(currentAttributes);
+  const isDuplicateCombo = currentKey !== "" && existingCombos.has(currentKey);
 
   return (
     <div className="flex flex-col gap-2 rounded-base border border-border p-3">
@@ -346,15 +362,17 @@ function VariantAttributesEditor({
         />
       </label>
 
+      {isDuplicateCombo && (
+        <p className="text-xs text-danger">Ya existe otra variante de este producto con esa combinación.</p>
+      )}
+
       <div className="flex gap-2">
         <Button
           type="button"
           variant="primary"
           className="px-3 py-1"
-          disabled={isSaving}
-          onClick={() =>
-            onSave(rowsToAttributes(rows, attributes), sku.trim() === "" ? null : sku.trim(), Number(stock))
-          }
+          disabled={isSaving || isDuplicateCombo || !isStockValid}
+          onClick={() => onSave(currentAttributes, sku.trim() === "" ? null : sku.trim(), parsedStock)}
         >
           {isSaving ? "Guardando..." : "Guardar"}
         </Button>
@@ -364,6 +382,19 @@ function VariantAttributesEditor({
       </div>
     </div>
   );
+}
+
+// Mismo criterio que el backend (products/services.py::_attributes_key):
+// una clave canónica (orden estable, sin depender de en qué orden se
+// tildaron los atributos) para detectar combinaciones repetidas antes
+// de mandar el request -- el backend igual lo valida, esto es solo
+// para avisar temprano en vez de esperar el 409.
+function attributesKey(attributes: Record<string, string>): string {
+  return Object.entries(attributes)
+    .filter(([, value]) => value !== "")
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${value}`)
+    .join("|");
 }
 
 function formatAttributes(attributes: Record<string, string>): string {
@@ -485,6 +516,7 @@ interface VariantCombinationGeneratorProps {
   attributes: ProductAttributeRead[];
   productSku: string | null;
   isSaving: boolean;
+  existingCombos: Set<string>;
   onCreate: (variants: ProductVariantCreate[]) => void;
   onCancel: () => void;
 }
@@ -493,6 +525,7 @@ function VariantCombinationGenerator({
   attributes,
   productSku,
   isSaving,
+  existingCombos,
   onCreate,
   onCancel,
 }: VariantCombinationGeneratorProps) {
@@ -558,6 +591,17 @@ function VariantCombinationGenerator({
 
   const attributeNames = parsedAxes.map((axis) => axis.name);
 
+  // Por fila: combinación ya usada por una variante existente del
+  // producto, y stock válido (entero >= 0 -- min="0" en el input es
+  // solo un hint de HTML, no bloquea nada por sí solo).
+  const rowIssues = rows.map((row) => {
+    const parsedStock = Number(row.stock);
+    const isStockValid = row.stock !== "" && Number.isFinite(parsedStock) && Number.isInteger(parsedStock) && parsedStock >= 0;
+    const isDuplicate = existingCombos.has(attributesKey(row.attributes));
+    return { isStockValid, isDuplicate, parsedStock };
+  });
+  const hasIssues = rowIssues.some((issue) => issue.isDuplicate || !issue.isStockValid);
+
   return (
     <div className="flex flex-col gap-3 rounded-base border border-border p-3">
       <div className="overflow-x-auto">
@@ -571,6 +615,7 @@ function VariantCombinationGenerator({
               ))}
               <th className="px-2 py-1">SKU</th>
               <th className="px-2 py-1">Stock</th>
+              <th className="px-2 py-1"></th>
             </tr>
           </thead>
           <tbody>
@@ -602,24 +647,37 @@ function VariantCombinationGenerator({
                     }
                   />
                 </td>
+                <td className="px-2 py-1 text-xs text-danger">
+                  {rowIssues[index].isDuplicate
+                    ? "Ya existe esta combinación"
+                    : !rowIssues[index].isStockValid
+                      ? "Stock inválido"
+                      : ""}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
+      {hasIssues && (
+        <p className="text-xs text-danger">
+          Revisá las filas marcadas: hay combinaciones repetidas o cantidades de stock inválidas.
+        </p>
+      )}
+
       <div className="flex gap-2">
         <Button
           type="button"
           variant="primary"
           className="px-3 py-1"
-          disabled={isSaving}
+          disabled={isSaving || hasIssues}
           onClick={() =>
             onCreate(
-              rows.map((row) => ({
+              rows.map((row, index) => ({
                 attributes: row.attributes,
                 sku: row.sku.trim() === "" ? null : row.sku.trim(),
-                stock: Number(row.stock) || 0,
+                stock: rowIssues[index].parsedStock,
               }))
             )
           }
@@ -645,6 +703,7 @@ type AddMode = "none" | "single" | "generate";
 
 export function ProductVariants({ product }: ProductVariantsProps) {
   const queryClient = useQueryClient();
+  const canWrite = useCanWrite();
   const [addMode, setAddMode] = useState<AddMode>("none");
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
 
@@ -658,14 +717,31 @@ export function ProductVariants({ product }: ProductVariantsProps) {
   const attributesQuery = useQuery({ queryKey: ["productAttributes"], queryFn: listAttributes });
   const attributes = attributesQuery.data ?? [];
 
+  // Combinaciones ya usadas por variantes existentes -- se excluye la
+  // que se está editando (si hay una), para no marcarla como
+  // "duplicada de sí misma" al no haber cambiado sus atributos.
+  const existingCombos = new Set(
+    liveProduct.variants
+      .filter((v) => v.id !== editingVariantId)
+      .map((v) => attributesKey(v.attributes))
+      .filter((key) => key !== "")
+  );
+
   const invalidateProducts = () => queryClient.invalidateQueries({ queryKey: ["products"] });
 
+  // Las 4 mutations comparten un solo banner de error más abajo (ver
+  // el ?? en el render) -- sin resetear las otras acá, el mensaje de
+  // una mutation que falló queda pegado en pantalla aunque después el
+  // usuario complete OTRA operación con éxito.
   const createMutation = useMutation({
     mutationFn: (payload: { attributes: Record<string, string>; sku: string | null; stock: number }) =>
       createVariant(product.id, payload),
     onSuccess: () => {
       invalidateProducts();
       setAddMode("none");
+      updateMutation.reset();
+      deleteMutation.reset();
+      createBulkMutation.reset();
     },
   });
 
@@ -674,6 +750,9 @@ export function ProductVariants({ product }: ProductVariantsProps) {
     onSuccess: () => {
       invalidateProducts();
       setAddMode("none");
+      createMutation.reset();
+      updateMutation.reset();
+      deleteMutation.reset();
     },
   });
 
@@ -692,17 +771,31 @@ export function ProductVariants({ product }: ProductVariantsProps) {
     onSuccess: () => {
       invalidateProducts();
       setEditingVariantId(null);
+      createMutation.reset();
+      deleteMutation.reset();
+      createBulkMutation.reset();
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (variantId: string) => deleteVariant(product.id, variantId),
-    onSuccess: invalidateProducts,
+    onSuccess: () => {
+      invalidateProducts();
+      createMutation.reset();
+      updateMutation.reset();
+      createBulkMutation.reset();
+    },
   });
 
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-4">
       <h3 className="font-display text-sm font-semibold text-text">Variantes</h3>
+
+      {attributesQuery.isError && (
+        <p role="alert" className="rounded-base border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">
+          No se pudo cargar el catálogo de atributos: {(attributesQuery.error as Error).message}
+        </p>
+      )}
 
       {liveProduct.variants.length === 0 && addMode === "none" && (
         <p className="font-body text-sm text-text-dim">Sin variantes todavía.</p>
@@ -718,6 +811,7 @@ export function ProductVariants({ product }: ProductVariantsProps) {
                 initialSku={variant.sku}
                 initialStock={variant.stock}
                 isSaving={updateMutation.isPending}
+                existingCombos={existingCombos}
                 onSave={(attrs, sku, stock) =>
                   updateMutation.mutate({ variantId: variant.id, attributes: attrs, sku, stock })
                 }
@@ -730,29 +824,31 @@ export function ProductVariants({ product }: ProductVariantsProps) {
                 {formatAttributes(variant.attributes)}
                 {variant.sku ? ` — SKU: ${variant.sku}` : ""} — stock: {variant.stock}
               </span>
-              <span className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="px-2 py-1"
-                  onClick={() => setEditingVariantId(variant.id)}
-                >
-                  Editar
-                </Button>
-                <Button
-                  type="button"
-                  variant="danger"
-                  className="px-2 py-1"
-                  disabled={deleteMutation.isPending}
-                  onClick={() => {
-                    if (window.confirm("¿Borrar esta variante?")) {
-                      deleteMutation.mutate(variant.id);
-                    }
-                  }}
-                >
-                  Borrar
-                </Button>
-              </span>
+              {canWrite && (
+                <span className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="px-2 py-1"
+                    onClick={() => setEditingVariantId(variant.id)}
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    className="px-2 py-1"
+                    disabled={deleteMutation.isPending}
+                    onClick={() => {
+                      if (window.confirm("¿Borrar esta variante?")) {
+                        deleteMutation.mutate(variant.id);
+                      }
+                    }}
+                  >
+                    Borrar
+                  </Button>
+                </span>
+              )}
             </li>
           )
         )}
@@ -765,6 +861,7 @@ export function ProductVariants({ product }: ProductVariantsProps) {
           initialSku={null}
           initialStock={0}
           isSaving={createMutation.isPending}
+          existingCombos={existingCombos}
           onSave={(attrs, sku, stock) => createMutation.mutate({ attributes: attrs, sku, stock })}
           onCancel={() => setAddMode("none")}
         />
@@ -775,12 +872,13 @@ export function ProductVariants({ product }: ProductVariantsProps) {
           attributes={attributes}
           productSku={liveProduct.sku}
           isSaving={createBulkMutation.isPending}
+          existingCombos={existingCombos}
           onCreate={(variants) => createBulkMutation.mutate(variants)}
           onCancel={() => setAddMode("none")}
         />
       )}
 
-      {addMode === "none" && (
+      {addMode === "none" && canWrite && (
         <div className="flex gap-2">
           <Button type="button" variant="secondary" onClick={() => setAddMode("single")}>
             + Agregar variante

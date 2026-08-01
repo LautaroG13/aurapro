@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, DataTable } from "@/components/ui";
 import { deleteCustomer, listCustomers, listCustomerTypes } from "@/lib/api/customers";
 import type { CustomerRead } from "@/lib/api/types";
+import { useCanWrite } from "@/lib/currentUserContext";
 
 interface CustomersTableProps {
   onEdit: (customer: CustomerRead) => void;
@@ -12,6 +13,7 @@ interface CustomersTableProps {
 
 export function CustomersTable({ onEdit }: CustomersTableProps) {
   const queryClient = useQueryClient();
+  const canWrite = useCanWrite();
   const customersQuery = useQuery({ queryKey: ["customers"], queryFn: listCustomers });
   // Comparte queryKey con CustomerForm -- React Query dedupea, no
   // dispara un fetch extra. Se usa acá solo para resolver
@@ -69,23 +71,25 @@ export function CustomersTable({ onEdit }: CustomersTableProps) {
                     : "—"}
                 </DataTable.Cell>
                 <DataTable.Cell>
-                  <div className="flex gap-2">
-                    <Button variant="secondary" className="px-2.5 py-1" onClick={() => onEdit(customer)}>
-                      Editar
-                    </Button>
-                    <Button
-                      variant="danger"
-                      className="px-2.5 py-1"
-                      disabled={deleteMutation.isPending}
-                      onClick={() => {
-                        if (window.confirm(`¿Borrar "${customer.name}"?`)) {
-                          deleteMutation.mutate(customer.id);
-                        }
-                      }}
-                    >
-                      Borrar
-                    </Button>
-                  </div>
+                  {canWrite && (
+                    <div className="flex gap-2">
+                      <Button variant="secondary" className="px-2.5 py-1" onClick={() => onEdit(customer)}>
+                        Editar
+                      </Button>
+                      <Button
+                        variant="danger"
+                        className="px-2.5 py-1"
+                        disabled={deleteMutation.isPending}
+                        onClick={() => {
+                          if (window.confirm(`¿Borrar "${customer.name}"?`)) {
+                            deleteMutation.mutate(customer.id);
+                          }
+                        }}
+                      >
+                        Borrar
+                      </Button>
+                    </div>
+                  )}
                 </DataTable.Cell>
               </DataTable.Row>
             ))}
