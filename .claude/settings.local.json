@@ -50,7 +50,11 @@
       "Bash(echo \"PID: $!\")",
       "Bash(npx next *)",
       "Bash(curl -sv http://localhost:3000/sales)",
-      "Bash(kill -9 66930)"
+      "Bash(kill -9 66930)",
+      "Bash(.venv/bin/python3 -m alembic heads)",
+      "Bash(.venv/bin/python3 -m alembic current)",
+      "Bash(diff /Users/lautaromunte/Desktop/AuraPro/.env /Users/lautaromunte/Projects/AuraPro/.env.example 2>&1 | head -30; echo \"---keys only \\(sin valores\\)---\"; grep -oE '^[A-Z_]+=' /Users/lautaromunte/Desktop/AuraPro/.env)",
+      "Bash(echo \"---exit $?---\")"
     ]
   }
 }
