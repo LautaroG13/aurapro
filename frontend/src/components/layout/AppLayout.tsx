@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 import { AuthGate } from "@/components/AuthGate";
@@ -45,7 +45,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
   );
 }
 
+const SIDEBAR_COLLAPSED_KEY = "aurapro:sidebar-collapsed";
+
 function AuthenticatedShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const { role, isSuperadmin, isAdmin } = useMemo(() => {
     const token = getStoredToken();
     const payload = token ? decodeToken(token) : null;
@@ -56,13 +59,39 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Lazy init: AuthGate ya garantiza que este árbol solo monta en el
+  // cliente (ver su comentario sobre el parpadeo de SSR), así que leer
+  // localStorage acá no genera mismatch de hidratación.
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  });
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
+  }, [collapsed]);
+
+  // Navegar (incluido el propio click en un NavLink) cierra el drawer
+  // mobile -- si no, queda tapando la página recién cargada.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
   return (
     <CurrentUserProvider value={{ role, isAdmin, isSuperadmin }}>
       <div className="flex min-h-screen">
-        <Sidebar isSuperadmin={isSuperadmin} isAdmin={isAdmin} />
+        <Sidebar
+          isSuperadmin={isSuperadmin}
+          isAdmin={isAdmin}
+          collapsed={collapsed}
+          onToggleCollapsed={() => setCollapsed((value) => !value)}
+          mobileOpen={mobileOpen}
+          onCloseMobile={() => setMobileOpen(false)}
+        />
         <div className="flex flex-1 flex-col">
-          <Topbar />
-          <main className="flex-1 overflow-y-auto bg-bg p-8">
+          <Topbar onOpenMobileMenu={() => setMobileOpen(true)} />
+          <main className="flex-1 overflow-y-auto bg-bg p-4 md:p-8">
             <div className="mx-auto flex max-w-4xl flex-col gap-6">{children}</div>
           </main>
         </div>
