@@ -104,12 +104,20 @@ services:
       context: ./backend
     container_name: aurapro-backend
     restart: unless-stopped
-    # Sin `environment:` para Postgres/Redis/Kafka: los defaults de
-    # app/core/config.py ya son los hostnames de este mismo docker-compose
-    # (postgres, redis, kafka) -- ver el docstring de Settings. El .env de
-    # la raíz no se copia a la imagen ni aplica acá (env_file="../.env" no
-    # resuelve a nada dentro del contenedor), así que corriendo por Docker
-    # siempre se usan estos defaults, no el `.env` de desarrollo local.
+    # app/core/config.py pasó a requerir redis_url/kafka_* sin default
+    # (infra cloud-native: Upstash + Confluent Cloud, Settings falla al
+    # arrancar si faltan). Acá van apuntados a los servicios locales de
+    # este mismo docker-compose para que el backend levante. redis:// va
+    # a andar bien (redis_client.py no fuerza TLS). kafka:9092 NO va a
+    # conectar -- el cliente fuerza SASL_SSL sin fallback plaintext, así
+    # que localmente Kafka queda inevitablemente no disponible (mismo
+    # estado degradado que ya había antes de este cambio, cuando el
+    # contenedor kafka tampoco estaba levantado).
+    environment:
+      REDIS_URL: "redis://redis:6379/0"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      KAFKA_USER: "local"
+      KAFKA_PASSWORD: "local"
     ports:
       - "8000:8000"
     depends_on:
