@@ -21,6 +21,16 @@ export function Dashboard() {
 
   const summary = summaryQuery.data;
 
+  if (summaryQuery.isError || revenueQuery.isError || topProductsQuery.isError || paymentMethodsQuery.isError) {
+    return (
+      <div className="aura-card">
+        <p role="alert" className="aura-alert">
+          No pudimos cargar el dashboard. Probá recargar la página.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">

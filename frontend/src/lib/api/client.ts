@@ -1,6 +1,22 @@
-import { getStoredToken } from "@/lib/auth";
+import { clearStoredToken, getStoredToken } from "@/lib/auth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+// El JWT expira a los 60 min (backend/app/core/config.py) y no hay
+// refresh token -- sin esto, cualquier pantalla que siga abierta más
+// de una hora se queda pidiendo datos que el backend rechaza con 401
+// para siempre, sin ningún aviso (AuthGate solo chequea que haya un
+// token guardado al montar, no si sigue siendo válido). isRedirecting
+// evita disparar el reload más de una vez cuando varias queries en
+// paralelo (ej. el dashboard) reciben 401 al mismo tiempo.
+let isRedirectingToLogin = false;
+
+function handleUnauthorized(): void {
+  if (isRedirectingToLogin) return;
+  isRedirectingToLogin = true;
+  clearStoredToken();
+  window.location.reload();
+}
 
 export class ApiError extends Error {
   status: number;
@@ -51,6 +67,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
 
   if (!res.ok) {
+    if (res.status === 401) handleUnauthorized();
     const body: unknown = await res.json().catch(() => null);
     throw new ApiError(res.status, extractErrorMessage(body, res.status));
   }
@@ -77,6 +94,7 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
   const res = await fetch(`${API_URL}${path}`, { headers });
 
   if (!res.ok) {
+    if (res.status === 401) handleUnauthorized();
     const body: unknown = await res.json().catch(() => null);
     throw new ApiError(res.status, extractErrorMessage(body, res.status));
   }
@@ -102,6 +120,7 @@ export async function apiFetchUpload<T>(path: string, file: File): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, { method: "PUT", headers, body: formData });
 
   if (!res.ok) {
+    if (res.status === 401) handleUnauthorized();
     const body: unknown = await res.json().catch(() => null);
     throw new ApiError(res.status, extractErrorMessage(body, res.status));
   }
