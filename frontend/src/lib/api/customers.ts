@@ -7,8 +7,19 @@ import type {
   CustomerUpdate,
 } from "./types";
 
-export async function listCustomers(): Promise<CustomerRead[]> {
-  return apiFetch<CustomerRead[]>("/api/v1/customers");
+export interface ListCustomersParams {
+  skip?: number;
+  limit?: number;
+  search?: string;
+}
+
+export async function listCustomers(params: ListCustomersParams = {}): Promise<CustomerRead[]> {
+  const query = new URLSearchParams();
+  if (params.skip) query.set("skip", String(params.skip));
+  if (params.limit) query.set("limit", String(params.limit));
+  if (params.search) query.set("search", params.search);
+  const qs = query.toString();
+  return apiFetch<CustomerRead[]>(`/api/v1/customers${qs ? `?${qs}` : ""}`);
 }
 
 export async function createCustomer(payload: CustomerCreate): Promise<CustomerRead> {

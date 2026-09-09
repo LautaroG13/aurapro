@@ -26,7 +26,7 @@ function formatVariantLabel(variant: ProductVariantRead): string {
 export function OrderNoteForm() {
   const queryClient = useQueryClient();
 
-  const customersQuery = useQuery({ queryKey: ["customers"], queryFn: listCustomers });
+  const customersQuery = useQuery({ queryKey: ["customers"], queryFn: () => listCustomers() });
   const productsQuery = useQuery({ queryKey: ["products"], queryFn: listProducts });
   const customerTypesQuery = useQuery({ queryKey: ["customerTypes"], queryFn: listCustomerTypes });
 

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -63,10 +63,14 @@ async def create_customer(db: AsyncSession, tenant_id: UUID, payload: CustomerCr
     return customer
 
 
-async def list_customers(db: AsyncSession, skip: int = 0, limit: int = 50) -> list[Customer]:
-    result = await db.execute(
-        select(Customer).order_by(Customer.created_at.desc()).offset(skip).limit(limit)
-    )
+async def list_customers(
+    db: AsyncSession, skip: int = 0, limit: int = 50, search: str | None = None
+) -> list[Customer]:
+    query = select(Customer)
+    if search:
+        pattern = f"%{search}%"
+        query = query.where(or_(Customer.name.ilike(pattern), Customer.email.ilike(pattern)))
+    result = await db.execute(query.order_by(Customer.created_at.desc()).offset(skip).limit(limit))
     return list(result.scalars().all())
 
 

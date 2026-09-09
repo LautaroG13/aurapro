@@ -13,7 +13,7 @@ export function CustomerAccountsTable() {
   // dedupea. Se necesita el CustomerRead completo (no solo lo que
   // devuelve /customer-accounts) para reusar <CustomerAccount> tal
   // cual, sin duplicar esa UI.
-  const customersQuery = useQuery({ queryKey: ["customers"], queryFn: listCustomers });
+  const customersQuery = useQuery({ queryKey: ["customers"], queryFn: () => listCustomers() });
   const [expandedCustomerId, setExpandedCustomerId] = useState<string | null>(null);
 
   if (accountsQuery.isLoading) {
