@@ -18,7 +18,7 @@ export function SalesTable() {
   // Comparte queryKey con SaleForm/CustomerForm -- React Query dedupea,
   // no dispara un fetch extra. Se usa acá solo para resolver
   // customer_id -> nombre en la columna "Cliente".
-  const customersQuery = useQuery({ queryKey: ["customers"], queryFn: listCustomers });
+  const customersQuery = useQuery({ queryKey: ["customers"], queryFn: () => listCustomers() });
   const customerNameById = new Map(customersQuery.data?.map((c) => [c.id, c.name]));
 
   const [downloadingSaleId, setDownloadingSaleId] = useState<string | null>(null);

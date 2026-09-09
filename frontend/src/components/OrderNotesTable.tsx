@@ -17,7 +17,7 @@ const STATUS_LABELS: Record<OrderNoteStatus, string> = {
 export function OrderNotesTable() {
   const queryClient = useQueryClient();
   const orderNotesQuery = useQuery({ queryKey: ["orderNotes"], queryFn: listOrderNotes });
-  const customersQuery = useQuery({ queryKey: ["customers"], queryFn: listCustomers });
+  const customersQuery = useQuery({ queryKey: ["customers"], queryFn: () => listCustomers() });
   // Para resolver sale_id -> sale_number en las notas ya facturadas.
   const salesQuery = useQuery({ queryKey: ["sales"], queryFn: listSales });
   const customerNameById = new Map(customersQuery.data?.map((c) => [c.id, c.name]));

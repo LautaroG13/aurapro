@@ -92,10 +92,11 @@ async def create_customer_endpoint(
 async def list_customers_endpoint(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
+    search: str | None = Query(default=None, min_length=1),
     _current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_tenant_db),
 ) -> list[CustomerRead]:
-    customers = await list_customers(db, skip=skip, limit=limit)
+    customers = await list_customers(db, skip=skip, limit=limit, search=search)
     return [CustomerRead.model_validate(c) for c in customers]
 
 

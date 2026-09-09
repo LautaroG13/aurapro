@@ -28,7 +28,7 @@ function formatVariantLabel(variant: ProductVariantRead): string {
 export function SaleForm() {
   const queryClient = useQueryClient();
 
-  const customersQuery = useQuery({ queryKey: ["customers"], queryFn: listCustomers });
+  const customersQuery = useQuery({ queryKey: ["customers"], queryFn: () => listCustomers() });
   const productsQuery = useQuery({ queryKey: ["products"], queryFn: listProducts });
   // Comparte queryKey con CustomerForm -- React Query dedupea.
   const customerTypesQuery = useQuery({ queryKey: ["customerTypes"], queryFn: listCustomerTypes });

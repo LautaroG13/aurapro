@@ -18,7 +18,7 @@ export function QuotesTable() {
   const queryClient = useQueryClient();
   const quotesQuery = useQuery({ queryKey: ["quotes"], queryFn: listQuotes });
   // Comparte queryKey con QuoteForm/CustomersTable -- React Query dedupea.
-  const customersQuery = useQuery({ queryKey: ["customers"], queryFn: listCustomers });
+  const customersQuery = useQuery({ queryKey: ["customers"], queryFn: () => listCustomers() });
   const customerNameById = new Map(customersQuery.data?.map((c) => [c.id, c.name]));
 
   const [downloadingQuoteId, setDownloadingQuoteId] = useState<string | null>(null);
