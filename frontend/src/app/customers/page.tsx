@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { CustomerForm } from "@/components/CustomerForm";
 import { CustomersTable } from "@/components/CustomersTable";
-import { Button } from "@/components/ui";
+import { Button, PageHeader } from "@/components/ui";
 import type { CustomerRead } from "@/lib/api/types";
 import { useCanWrite } from "@/lib/currentUserContext";
 
@@ -16,15 +16,20 @@ export default function CustomersPage() {
 
   return (
     <>
-      <h1 className="font-display text-xl font-semibold tracking-tight text-text">AuraPro — Clientes</h1>
+      <PageHeader
+        title="Tus clientes"
+        subtitle="Sus datos de contacto y su cuenta corriente, siempre a mano."
+        helpText="Acá cargás a quién le vendés: para facturar más rápido y llevar el saldo que te deben."
+        actions={
+          formTarget === null && canWrite ? (
+            <Button variant="primary" onClick={() => setFormTarget("new")}>
+              Nuevo cliente
+            </Button>
+          ) : undefined
+        }
+      />
 
-      {formTarget === null ? (
-        canWrite && (
-          <Button variant="primary" className="self-start" onClick={() => setFormTarget("new")}>
-            Nuevo cliente
-          </Button>
-        )
-      ) : (
+      {formTarget !== null && (
         <CustomerForm
           key={formTarget === "new" ? "new" : formTarget.id}
           editingCustomer={formTarget === "new" ? null : formTarget}
@@ -32,7 +37,7 @@ export default function CustomersPage() {
         />
       )}
 
-      <CustomersTable onEdit={(customer) => setFormTarget(customer)} />
+      <CustomersTable onEdit={(customer) => setFormTarget(customer)} onCreate={() => setFormTarget("new")} />
     </>
   );
 }
