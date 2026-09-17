@@ -2,16 +2,32 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Button, Card, DataTable, StatusDot } from "@/components/ui";
+import { Button, Card, DataTable, EmptyState, StatusDot } from "@/components/ui";
 import { deleteProduct, listProducts } from "@/lib/api/products";
 import type { ProductRead } from "@/lib/api/types";
 import { useCanWrite } from "@/lib/currentUserContext";
 
 interface ProductsTableProps {
   onEdit: (product: ProductRead) => void;
+  onCreate?: () => void;
 }
 
-export function ProductsTable({ onEdit }: ProductsTableProps) {
+function BoxIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" aria-hidden="true">
+      <path
+        d="M3.5 8.2 12 4l8.5 4.2v7.6L12 20l-8.5-4.2V8.2Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path d="M3.8 8.4 12 12.4l8.2-4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M12 12.4V20" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+export function ProductsTable({ onEdit, onCreate }: ProductsTableProps) {
   const queryClient = useQueryClient();
   const canWrite = useCanWrite();
   const productsQuery = useQuery({ queryKey: ["products"], queryFn: listProducts });
@@ -99,9 +115,14 @@ export function ProductsTable({ onEdit }: ProductsTableProps) {
               </DataTable.Row>
             ))}
             {productsQuery.data?.length === 0 && (
-              <DataTable.Row>
-                <DataTable.Cell className="text-center text-text-faint" colSpan={7}>
-                  Sin productos todavía.
+              <DataTable.Row className="hover:bg-transparent">
+                <DataTable.Cell colSpan={7} className="border-b-0 p-0">
+                  <EmptyState
+                    icon={<BoxIcon />}
+                    title="Todavía no cargaste ningún producto"
+                    description="Cargá tu primer producto para empezar a controlar stock y precios."
+                    action={{ label: "Cargar tu primer producto", onClick: () => onCreate?.() }}
+                  />
                 </DataTable.Cell>
               </DataTable.Row>
             )}

@@ -1,7 +1,20 @@
+"use client";
+
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { Button, Card, DataTable, Input, Select, StatCard, StatusDot } from "@/components/ui";
+import {
+  Button,
+  Card,
+  DataTable,
+  EmptyState,
+  Input,
+  PageHeader,
+  PlanBadge,
+  Select,
+  StatCard,
+  StatusDot,
+} from "@/components/ui";
 
 const SAMPLE_PRODUCTS = [
   { name: 'Taladro percutor 1/2" 750W', sku: "TLD-750-BK", status: "ok" as const, stock: 42, price: "$89.900" },
@@ -149,6 +162,42 @@ export default function DesignSystemPage() {
             <span className="flex items-center gap-1.5">
               <StatusDot status="out" /> Sin stock
             </span>
+          </div>
+        </Section>
+
+        <Section title="PageHeader">
+          <PageHeader
+            title="Tus productos"
+            subtitle="El catálogo que vendés: precios, stock y variantes en un solo lugar."
+            helpText="Acá cargás y actualizás todo lo que tenés para vender."
+            actions={<Button variant="primary">Nuevo producto</Button>}
+          />
+        </Section>
+
+        <Section title="EmptyState">
+          <EmptyState
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" aria-hidden="true">
+                <path
+                  d="M3.5 8.2 12 4l8.5 4.2v7.6L12 20l-8.5-4.2V8.2Z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            }
+            title="Todavía no cargaste ningún producto"
+            description="Cargá tu primer producto para empezar a controlar stock y precios."
+            action={{ label: "Cargar tu primer producto", onClick: () => {} }}
+          />
+        </Section>
+
+        <Section title="PlanBadge — variantes">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <PlanBadge variant="pro" />
+            <PlanBadge variant="pro-max" />
+            <PlanBadge variant="proximamente" />
+            <PlanBadge variant="contador" value={3} />
           </div>
         </Section>
       </div>

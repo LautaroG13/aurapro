@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { ProductForm } from "@/components/ProductForm";
 import { ProductsTable } from "@/components/ProductsTable";
-import { Button } from "@/components/ui";
+import { Button, PageHeader } from "@/components/ui";
 import type { ProductRead } from "@/lib/api/types";
 import { useCanWrite } from "@/lib/currentUserContext";
 
@@ -16,17 +16,20 @@ export default function ProductsPage() {
 
   return (
     <>
-      <h1 className="font-display text-xl font-semibold tracking-tight text-text">
-        AuraPro — Productos
-      </h1>
+      <PageHeader
+        title="Tus productos"
+        subtitle="El catálogo que vendés: precios, stock y variantes en un solo lugar."
+        helpText="Acá cargás y actualizás todo lo que tenés para vender. El stock se descuenta solo con cada venta."
+        actions={
+          formTarget === null && canWrite ? (
+            <Button variant="primary" onClick={() => setFormTarget("new")}>
+              Nuevo producto
+            </Button>
+          ) : undefined
+        }
+      />
 
-      {formTarget === null ? (
-        canWrite && (
-          <Button variant="primary" className="self-start" onClick={() => setFormTarget("new")}>
-            Nuevo producto
-          </Button>
-        )
-      ) : (
+      {formTarget !== null && (
         <ProductForm
           key={formTarget === "new" ? "new" : formTarget.id}
           editingProduct={formTarget === "new" ? null : formTarget}
@@ -34,7 +37,7 @@ export default function ProductsPage() {
         />
       )}
 
-      <ProductsTable onEdit={(product) => setFormTarget(product)} />
+      <ProductsTable onEdit={(product) => setFormTarget(product)} onCreate={() => setFormTarget("new")} />
     </>
   );
 }

@@ -2,16 +2,31 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Button, Card, DataTable } from "@/components/ui";
+import { Button, Card, DataTable, EmptyState } from "@/components/ui";
 import { deleteCustomer, listCustomers, listCustomerTypes } from "@/lib/api/customers";
 import type { CustomerRead } from "@/lib/api/types";
 import { useCanWrite } from "@/lib/currentUserContext";
 
 interface CustomersTableProps {
   onEdit: (customer: CustomerRead) => void;
+  onCreate?: () => void;
 }
 
-export function CustomersTable({ onEdit }: CustomersTableProps) {
+function PersonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" aria-hidden="true">
+      <circle cx="12" cy="8.2" r="3.2" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M5 19.5c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+export function CustomersTable({ onEdit, onCreate }: CustomersTableProps) {
   const queryClient = useQueryClient();
   const canWrite = useCanWrite();
   const customersQuery = useQuery({ queryKey: ["customers"], queryFn: listCustomers });
@@ -94,9 +109,14 @@ export function CustomersTable({ onEdit }: CustomersTableProps) {
               </DataTable.Row>
             ))}
             {customersQuery.data?.length === 0 && (
-              <DataTable.Row>
-                <DataTable.Cell className="text-center text-text-faint" colSpan={5}>
-                  Sin clientes todavía.
+              <DataTable.Row className="hover:bg-transparent">
+                <DataTable.Cell colSpan={5} className="border-b-0 p-0">
+                  <EmptyState
+                    icon={<PersonIcon />}
+                    title="Todavía no cargaste ningún cliente"
+                    description="Agregá tu primer cliente para empezar a llevar sus datos y su cuenta corriente."
+                    action={{ label: "Agregar tu primer cliente", onClick: () => onCreate?.() }}
+                  />
                 </DataTable.Cell>
               </DataTable.Row>
             )}
