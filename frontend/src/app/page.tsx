@@ -1,3 +1,4 @@
+import { Dashboard } from "@/components/dashboard/Dashboard";
 import { SystemMonitor } from "@/components/SystemMonitor";
 
 // StockAlert existía acá antes con un productId hardcodeado
@@ -10,6 +11,7 @@ export default function HomePage() {
   return (
     <>
       <h1>AuraPro</h1>
+      <Dashboard />
       <SystemMonitor />
     </>
   );

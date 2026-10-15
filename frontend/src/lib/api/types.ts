@@ -664,3 +664,41 @@ export interface TenantProfileUpdate {
   business_email?: string | null;
   tax_status?: CustomerTaxStatus | null;
 }
+
+/**
+ * Espeja backend/app/schemas/dashboard.py::DashboardSummary.
+ */
+export interface DashboardSummary {
+  revenue_today: number;
+  revenue_month: number;
+  sales_today_count: number;
+  average_ticket_month: number;
+  customer_debt_total: number;
+  low_stock_count: number;
+}
+
+/**
+ * Espeja backend/app/schemas/dashboard.py::RevenuePoint.
+ */
+export interface RevenuePoint {
+  date: string;
+  total: number;
+}
+
+/**
+ * Espeja backend/app/schemas/dashboard.py::TopProduct.
+ */
+export interface DashboardTopProduct {
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  revenue: number;
+}
+
+/**
+ * Espeja backend/app/schemas/dashboard.py::PaymentMethodTotal.
+ */
+export interface DashboardPaymentMethodTotal {
+  payment_method: string;
+  total: number;
+}
